@@ -19,10 +19,10 @@ class EmailService:
         self,
         to_email: str,
         subject: str,
-        body: str, # Plain text body is still accepted but HTML is preferred by ElasticMail
+        body: str, 
         html_body: Optional[str] = None,
-        cc_emails: Optional[List[str]] = None, # ElasticMail API might not directly support CC/BCC in this manner
-        bcc_emails: Optional[List[str]] = None # ElasticMail API might not directly support CC/BCC in this manner
+        cc_emails: Optional[List[str]] = None, 
+        bcc_emails: Optional[List[str]] = None 
     ) -> bool:
         """Send email to recipient(s) using ElasticMail"""
         try:
@@ -35,7 +35,7 @@ class EmailService:
                 html_content=content_to_send
             )
             
-            if response and response.get("messageid"): # Check for a successful response from ElasticMail
+            if response and response.get("messageid"): 
                 logger.info(f"Email sent successfully to {to_email} via ElasticMail. MessageID: {response.get('messageid')}")
                 return True
             else:
@@ -63,7 +63,7 @@ class EmailService:
         </html>
         """
         
-        return await self.send_email(user_email, subject, "", html_body) # Pass empty body, as html_body is preferred
+        return await self.send_email(user_email, subject, "", html_body) 
     
     async def send_course_assignment_email(
         self, 
