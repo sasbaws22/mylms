@@ -6,7 +6,7 @@ from sqlmodel import Session, select, func
 from fastapi import HTTPException, status
 from datetime import datetime, date, timedelta
 import uuid
-
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.models.analytics import LearningAnalytics, ActionType
 from app.models.models.user import User
 from app.models.models.course import Course, Enrollment
@@ -23,10 +23,10 @@ from app.schemas.base import PaginatedResponse
 class AnalyticsService:
     """Analytics and reporting service"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
     
-    def record_learning_event(self, event_data: LearningAnalyticsCreateSchema, user_id: str) -> LearningAnalyticsSchema:
+    async def record_learning_event(self, event_data: LearningAnalyticsCreateSchema, user_id: str) -> Any :
         """Record a new learning event"""
         new_event = LearningAnalytics(
             user_id=user_id,
@@ -37,9 +37,9 @@ class AnalyticsService:
             timestamp=datetime.utcnow()
         )
         self.db.add(new_event)
-        self.db.commit()
-        self.db.refresh(new_event)
-        return LearningAnalyticsSchema.model_validate(new_event)
+        await self.db.commit()
+        await self.db.refresh(new_event)
+        return new_event
 
     def get_dashboard_metrics(self) -> DashboardMetricsSchema:
         """Get key metrics for the learning dashboard"""
@@ -67,9 +67,10 @@ class AnalyticsService:
             top_departments=[]
         )
 
-    def get_user_analytics(self, user_id: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> UserAnalyticsSchema:
+    async def get_user_analytics(self, user_id: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> UserAnalyticsSchema:
         """Get detailed analytics for a specific user"""
-        user = self.db.exec(select(User).where(User.id == user_id)).first()
+        result = await self.db.exec(select(User).where(User.id == user_id))
+        user = result.first()
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -77,7 +78,6 @@ class AnalyticsService:
         return UserAnalyticsSchema(
             user_id=user.id,
             user_name=user.full_name,
-            department="N/A",
             total_enrollments=0,
             completed_courses=0,
             in_progress_courses=0,
