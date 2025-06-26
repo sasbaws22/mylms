@@ -225,11 +225,11 @@ class UserService:
         new_users_this_month = results3.first()
         # Assuming UserRole is an Enum or similar, and User has a 'role' attribute
         # You might need to adjust this based on your actual User and UserRole models
-        results4 = self.db.exec(
+        results4 = await self.db.exec(
             select(User.role, func.count(User.id))
             .group_by(User.role)
         )
-        users_by_role_data = results4
+        users_by_role_data = results4.first()
        
 
         

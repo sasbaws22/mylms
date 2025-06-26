@@ -68,63 +68,6 @@ async def get_course_analytics(
     return await analytics_service.get_course_analytics(course_id, start_date, end_date)
 
 
-@router.get("/system", response_model=SystemAnalyticsSchema)
-async def get_system_analytics(
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
-    current_user: TokenData = Depends(access_token_bearer),
-    db: Session = Depends(get_session)
-):
-    """Get system-wide analytics"""
-    analytics_service = AnalyticsService(db)
-    return await analytics_service.get_system_analytics(start_date, end_date)
-
-
-@router.post("/reports/generate", response_model=ReportSchema, status_code=status.HTTP_202_ACCEPTED)
-async def generate_report(
-    report_request: ReportGenerationSchema,
-    current_user: TokenData = Depends(access_token_bearer),
-    db: Session = Depends(get_session)
-):
-    """Generate a new report"""
-    analytics_service = AnalyticsService(db) 
-    id = current_user.get("sub")
-    return await analytics_service.generate_report(report_request, id)
-
-
-@router.get("/reports/{report_id}", response_model=ReportSchema)
-async def get_report_status(
-    report_id: str,
-    current_user: TokenData = Depends(access_token_bearer),
-    db: Session = Depends(get_session)
-):
-    """Get the status of a generated report"""
-    analytics_service = AnalyticsService(db)
-    return await analytics_service.get_report_status(report_id)
-
-
-@router.post("/export", response_model=ExportSchema, status_code=status.HTTP_202_ACCEPTED)
-async def export_data(
-    export_request: ExportRequestSchema,
-    current_user: TokenData = Depends(access_token_bearer),
-    db: Session = Depends(get_session)
-):
-    """Export data from the system"""
-    analytics_service = AnalyticsService(db) 
-    id = current_user.get("sub")
-    return await analytics_service.export_data(export_request, id )
-
-
-@router.get("/export/{export_id}", response_model=ExportSchema)
-async def get_export_status(
-    export_id: str,
-    current_user: TokenData = Depends(access_token_bearer),
-    db: Session = Depends(get_session)
-):
-    """Get the status of a data export job"""
-    analytics_service = AnalyticsService(db)
-    return await analytics_service.get_export_status(export_id)
-
 
 # Create router instance for export
 analytics_router = router

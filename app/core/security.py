@@ -127,7 +127,7 @@ class RefreshTokenBearer(TokenBearer):
 async def get_current_user(
     db: AsyncSession = Depends(get_session), token: dict = Depends(AccessTokenBearer())
 ) :
-          email = token.get["email"]
+          email = token.get("email")
           
           result = await db.exec(select(User).where(User.email == email))
           user = result.first()

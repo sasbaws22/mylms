@@ -2,7 +2,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session
+from sqlmodel import Session,select
 
 from app.db.database import get_session
 from app.models.models.notification import Notification, NotificationPreferences
@@ -40,8 +40,10 @@ async def get_user_notifications(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    notification = await session.query(Notification).filter(Notification.user_id == current_user.id)
-    notifications= notification.all()
+    result = await session.exec(
+    select(Notification).where(Notification.user_id == current_user.id)
+    )
+    notifications = result.all()
     return notifications
 
 @notifications_router.get(
