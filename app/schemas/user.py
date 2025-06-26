@@ -34,7 +34,6 @@ class UserDetailSchema(BaseSchema, TimestampMixin):
     """Detailed user schema"""
     id: uuid.UUID
     email: str
-    username: str
     first_name: str
     last_name: str
     phone_number: Optional[str]

@@ -22,7 +22,7 @@ class CertificateService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_certificates(self, page: int = 1, limit: int = 20, user_id: Optional[str] = None, course_id: Optional[str] = None) -> PaginatedResponse[CertificateSchema]:
+    async def get_certificates(self, page: int = 1, limit: int = 20, user_id: Optional[str] = None, course_id: Optional[str] = None) -> PaginatedResponse[CertificateSchema]:
         """Get paginated list of certificates"""
         query = select(Certificate)
         
@@ -38,15 +38,19 @@ class CertificateService:
         if course_id:
             total_query = total_query.where(Certificate.course_id == course_id)
         
-        total = self.db.exec(total_query).first()
+        tota = await self.db.exec(total_query)
+        total = tota.first()
         
         offset = (page - 1) * limit
-        certificates = self.db.exec(query.offset(offset).limit(limit)).all()
+        certificate = await self.db.exec(query.offset(offset).limit(limit))
+        certificates = certificate.all()
         
         certificate_schemas = []
         for cert in certificates:
-            user = self.db.exec(select(User).where(User.id == cert.user_id)).first()
-            course = self.db.exec(select(Course).where(Course.id == cert.course_id)).first()
+            users = await self.db.exec(select(User).where(User.id == cert.user_id))
+            user = users.first()
+            course = await  self.db.exec(select(Course).where(Course.id == cert.course_id))
+            course = course.first()
             certificate_schemas.append(CertificateSchema(
                 id=cert.id,
                 user_id=cert.user_id,
@@ -65,9 +69,10 @@ class CertificateService:
         
         return PaginatedResponse.create(certificate_schemas, total, page, limit)
     
-    def create_certificate(self, certificate_data: CertificateCreateSchema) -> CertificateSchema:
+    async def create_certificate(self, certificate_data: CertificateCreateSchema) -> CertificateSchema:
         """Create a new certificate"""
-        user = self.db.exec(select(User).where(User.id == certificate_data.user_id)).first()
+        users = await self.db.exec(select(User).where(User.id == certificate_data.user_id))
+        user = users.first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -76,7 +81,8 @@ class CertificateService:
         
         course = None
         if certificate_data.course_id:
-            course = self.db.exec(select(Course).where(Course.id == certificate_data.course_id)).first()
+            courses = await self.db.exec(select(Course).where(Course.id == certificate_data.course_id))
+            course = courses.first()
             if not course:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -95,8 +101,8 @@ class CertificateService:
         )
         
         self.db.add(new_certificate)
-        self.db.commit()
-        self.db.refresh(new_certificate)
+        await self.db.commit()
+        await self.db.refresh(new_certificate)
         
         return CertificateSchema(
             id=new_certificate.id,
@@ -114,9 +120,10 @@ class CertificateService:
             updated_at=new_certificate.updated_at
         )
     
-    def get_certificate_by_id(self, certificate_id: str) -> CertificateSchema:
+    async def get_certificate_by_id(self, certificate_id: str) -> CertificateSchema:
         """Get certificate by ID"""
-        certificate = self.db.exec(select(Certificate).where(Certificate.id == certificate_id)).first()
+        certificates = await self.db.exec(select(Certificate).where(Certificate.id == certificate_id))
+        certificate = certificates.first()
         
         if not certificate:
             raise HTTPException(
@@ -124,8 +131,10 @@ class CertificateService:
                 detail="Certificate not found"
             )
         
-        user = self.db.exec(select(User).where(User.id == certificate.user_id)).first()
-        course = self.db.exec(select(Course).where(Course.id == certificate.course_id)).first()
+        users = await  self.db.exec(select(User).where(User.id == certificate.user_id))
+        user = users.first()
+        courses = await self.db.exec(select(Course).where(Course.id == certificate.course_id))
+        course = courses.first()
         
         return CertificateSchema(
             id=certificate.id,
@@ -143,9 +152,10 @@ class CertificateService:
             updated_at=certificate.updated_at
         )
     
-    def update_certificate(self, certificate_id: str, certificate_data: CertificateUpdateSchema) -> CertificateSchema:
+    async def update_certificate(self, certificate_id: str, certificate_data: CertificateUpdateSchema) -> CertificateSchema:
         """Update certificate information"""
-        certificate = self.db.exec(select(Certificate).where(Certificate.id == certificate_id)).first()
+        certificates = await self.db.exec(select(Certificate).where(Certificate.id == certificate_id))
+        certificate = certificates.first()
         
         if not certificate:
             raise HTTPException(
@@ -165,14 +175,15 @@ class CertificateService:
             certificate.is_valid = certificate_data.is_valid
         
         self.db.add(certificate)
-        self.db.commit()
-        self.db.refresh(certificate)
+        await self.db.commit()
+        await self.db.refresh(certificate)
         
-        return self.get_certificate_by_id(certificate.id)
+        return await self.get_certificate_by_id(certificate.id)
     
-    def delete_certificate(self, certificate_id: str) -> Dict[str, str]:
+    async def delete_certificate(self, certificate_id: str) -> Dict[str, str]:
         """Delete a certificate"""
-        certificate = self.db.exec(select(Certificate).where(Certificate.id == certificate_id)).first()
+        certificates = await self.db.exec(select(Certificate).where(Certificate.id == certificate_id))
+        certificate = certificates.first()
         
         if not certificate:
             raise HTTPException(
@@ -181,7 +192,7 @@ class CertificateService:
             )
         
         self.db.delete(certificate)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Certificate deleted successfully"}
 

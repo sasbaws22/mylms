@@ -28,7 +28,8 @@ async def create_learning_event(
 ):
     """Record a new learning event"""
     analytics_service = AnalyticsService(db)
-    return analytics_service.record_learning_event(event_data, current_user.username)
+    id = current_user.get("sub")
+    return await analytics_service.record_learning_event(event_data, id)
 
 
 @router.get("/dashboard-metrics", response_model=DashboardMetricsSchema)
@@ -38,7 +39,7 @@ async def get_dashboard_metrics(
 ):
     """Get key metrics for the learning dashboard"""
     analytics_service = AnalyticsService(db)
-    return analytics_service.get_dashboard_metrics()
+    return await analytics_service.get_dashboard_metrics()
 
 
 @router.get("/users/{user_id}", response_model=UserAnalyticsSchema)
@@ -51,7 +52,7 @@ async def get_user_analytics(
 ):
     """Get detailed analytics for a specific user"""
     analytics_service = AnalyticsService(db)
-    return analytics_service.get_user_analytics(user_id, start_date, end_date)
+    return await analytics_service.get_user_analytics(user_id, start_date, end_date)
 
 
 @router.get("/courses/{course_id}", response_model=CourseAnalyticsSchema)
@@ -64,7 +65,7 @@ async def get_course_analytics(
 ):
     """Get detailed analytics for a specific course"""
     analytics_service = AnalyticsService(db)
-    return analytics_service.get_course_analytics(course_id, start_date, end_date)
+    return await analytics_service.get_course_analytics(course_id, start_date, end_date)
 
 
 @router.get("/system", response_model=SystemAnalyticsSchema)
@@ -76,7 +77,7 @@ async def get_system_analytics(
 ):
     """Get system-wide analytics"""
     analytics_service = AnalyticsService(db)
-    return analytics_service.get_system_analytics(start_date, end_date)
+    return await analytics_service.get_system_analytics(start_date, end_date)
 
 
 @router.post("/reports/generate", response_model=ReportSchema, status_code=status.HTTP_202_ACCEPTED)
@@ -86,8 +87,9 @@ async def generate_report(
     db: Session = Depends(get_session)
 ):
     """Generate a new report"""
-    analytics_service = AnalyticsService(db)
-    return analytics_service.generate_report(report_request, current_user.username)
+    analytics_service = AnalyticsService(db) 
+    id = current_user.get("sub")
+    return await analytics_service.generate_report(report_request, id)
 
 
 @router.get("/reports/{report_id}", response_model=ReportSchema)
@@ -98,7 +100,7 @@ async def get_report_status(
 ):
     """Get the status of a generated report"""
     analytics_service = AnalyticsService(db)
-    return analytics_service.get_report_status(report_id)
+    return await analytics_service.get_report_status(report_id)
 
 
 @router.post("/export", response_model=ExportSchema, status_code=status.HTTP_202_ACCEPTED)
@@ -108,8 +110,9 @@ async def export_data(
     db: Session = Depends(get_session)
 ):
     """Export data from the system"""
-    analytics_service = AnalyticsService(db)
-    return analytics_service.export_data(export_request, current_user.username)
+    analytics_service = AnalyticsService(db) 
+    id = current_user.get("sub")
+    return await analytics_service.export_data(export_request, id )
 
 
 @router.get("/export/{export_id}", response_model=ExportSchema)
@@ -120,7 +123,7 @@ async def get_export_status(
 ):
     """Get the status of a data export job"""
     analytics_service = AnalyticsService(db)
-    return analytics_service.get_export_status(export_id)
+    return await analytics_service.get_export_status(export_id)
 
 
 # Create router instance for export

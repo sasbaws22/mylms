@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from sqlmodel import Session, select
 from fastapi import HTTPException, status
 import secrets
-import string
+import string 
+from sqlalchemy.orm import selectinload
 
 from app.core.security import (
     verify_password, get_password_hash, create_access_token, 
@@ -58,7 +59,7 @@ class AuthService:
         await self.db.refresh(new_user)
         
         # Send verification email
-        # await self._send_verification_email(new_user)
+        await self._send_verification_email(new_user)
         
         return new_user
     
@@ -243,32 +244,37 @@ class AuthService:
         return {"message": "Email verified successfully"}
     
     async def get_current_user_profile(self, user_id: str) -> UserProfileSchema:
-        """Get current user profile with detailed information"""
-        user = self.db.exec(
-            select(User).where(User.id == user_id)
-        ).first()
+      """Get current user profile with detailed information"""
+      users = await self.db.exec(
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.user_points),
+            selectinload(User.certificates),
+            selectinload(User.user_badges),
+        )
+     )
+      user = users.first()
+
+      if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+      # Now safe to access these relationships
+      total_points = len(user.user_points)
+      total_certificates = len(user.certificates)
+      total_badges = len(user.user_badges)
         
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # Get role
-        role = self.db.exec(select(User).where(User.role == user.role)).first()
-        # Calculate user statistics
-        total_points = user.total_points
-        total_certificates = len(user.certificates)
-        total_badges = len(user.user_badges)
-        
-        return UserProfileSchema(
+      return UserProfileSchema(
             id=user.id,
             email=user.email,
             username=user.username,
             first_name=user.first_name,
             last_name=user.last_name,
-            phone_number=user.phone, # Corrected from user.phone
-            role_name=role,
+            phone_number=user.phone, 
+            role_name= user.role,
             is_active=user.is_active,
             is_verified=user.is_verified,
             last_login=user.last_login,

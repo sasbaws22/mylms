@@ -21,7 +21,7 @@ class WebinarService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_webinars(self, page: int = 1, limit: int = 20, search: Optional[str] = None, status_filter: Optional[str] = None) -> PaginatedResponse[WebinarSchema]:
+    async def get_webinars(self, page: int = 1, limit: int = 20, search: Optional[str] = None, status_filter: Optional[str] = None) -> PaginatedResponse[WebinarSchema]:
         """Get paginated list of webinars"""
         query = select(Webinar)
         
@@ -45,10 +45,12 @@ class WebinarService:
         if status_filter:
             total_query = total_query.where(Webinar.status == status_filter)
         
-        total = self.db.exec(total_query).first()
+        total = await self.db.exec(total_query)
+        total = total.first()
         
         offset = (page - 1) * limit
-        webinars = self.db.exec(query.offset(offset).limit(limit)).all()
+        webinar = await self.db.exec(query.offset(offset).limit(limit))
+        webinars = webinar.all()
         
         webinar_schemas = []
         for webinar in webinars:
@@ -56,7 +58,7 @@ class WebinarService:
         
         return PaginatedResponse.create(webinar_schemas, total, page, limit)
     
-    def create_webinar(self, webinar_data: WebinarCreateSchema) -> WebinarSchema:
+    async def create_webinar(self, webinar_data: WebinarCreateSchema) -> WebinarSchema:
         """Create a new webinar"""
         new_webinar = Webinar(
             title=webinar_data.title,
@@ -69,14 +71,15 @@ class WebinarService:
         )
         
         self.db.add(new_webinar)
-        self.db.commit()
-        self.db.refresh(new_webinar)
+        await self.db.commit()
+        await self.db.refresh(new_webinar)
         
         return WebinarSchema.model_validate(new_webinar)
     
-    def get_webinar_by_id(self, webinar_id: str) -> WebinarSchema:
+    async def get_webinar_by_id(self, webinar_id: str) -> WebinarSchema:
         """Get webinar by ID"""
-        webinar = self.db.exec(select(Webinar).where(Webinar.id == webinar_id)).first()
+        webinarss= await self.db.exec(select(Webinar).where(Webinar.id == webinar_id))
+        webinar = webinarss.first()
         
         if not webinar:
             raise HTTPException(
@@ -86,9 +89,10 @@ class WebinarService:
         
         return WebinarSchema.model_validate(webinar)
     
-    def update_webinar(self, webinar_id: str, webinar_data: WebinarUpdateSchema) -> WebinarSchema:
+    async def update_webinar(self, webinar_id: str, webinar_data: WebinarUpdateSchema) -> WebinarSchema:
         """Update webinar information"""
-        webinar = self.db.exec(select(Webinar).where(Webinar.id == webinar_id)).first()
+        webinars = await self.db.exec(select(Webinar).where(Webinar.id == webinar_id))
+        webinar = webinars.first()
         
         if not webinar:
             raise HTTPException(
@@ -112,14 +116,15 @@ class WebinarService:
             webinar.organizer_id = webinar_data.organizer_id
         
         self.db.add(webinar)
-        self.db.commit()
-        self.db.refresh(webinar)
+        await self.db.commit()
+        await self.db.refresh(webinar)
         
         return WebinarSchema.model_validate(webinar)
     
-    def delete_webinar(self, webinar_id: str) -> Dict[str, str]:
+    async def delete_webinar(self, webinar_id: str) -> Dict[str, str]:
         """Delete a webinar"""
-        webinar = self.db.exec(select(Webinar).where(Webinar.id == webinar_id)).first()
+        webinars = await self.db.exec(select(Webinar).where(Webinar.id == webinar_id))
+        webinar = webinars.first()
         
         if not webinar:
             raise HTTPException(
@@ -128,32 +133,35 @@ class WebinarService:
             )
         
         self.db.delete(webinar)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Webinar deleted successfully"}
     
-    def register_for_webinar(self, webinar_id: str, user_id: str) -> WebinarRegistrationSchema:
+    async def register_for_webinar(self, webinar_id: str, user_id: str) -> WebinarRegistrationSchema:
         """Register a user for a webinar"""
-        webinar = self.db.exec(select(Webinar).where(Webinar.id == webinar_id)).first()
+        webinars = await self.db.exec(select(Webinar).where(Webinar.id == webinar_id))
+        webinar = webinars.first()
         if not webinar:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Webinar not found"
             )
         
-        user = self.db.exec(select(User).where(User.id == user_id)).first()
+        users = await self.db.exec(select(User).where(User.id == user_id))
+        user = users.first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
         
-        existing_registration = self.db.exec(
+        existing_registrations = await self.db.exec(
             select(WebinarRegistration).where(
                 (WebinarRegistration.webinar_id == webinar_id) &
                 (WebinarRegistration.user_id == user_id)
             )
-        ).first()
+        )
+        existing_registration = existing_registrations.first()
         
         if existing_registration:
             raise HTTPException(
@@ -168,14 +176,15 @@ class WebinarService:
         )
         
         self.db.add(new_registration)
-        self.db.commit()
-        self.db.refresh(new_registration)
+        await self.db.commit()
+        await self.db.refresh(new_registration)
         
         return WebinarRegistrationSchema.model_validate(new_registration)
     
-    def get_webinar_registrations(self, webinar_id: str, page: int = 1, limit: int = 20) -> PaginatedResponse[WebinarRegistrationSchema]:
+    async def get_webinar_registrations(self, webinar_id: str, page: int = 1, limit: int = 20) -> PaginatedResponse[WebinarRegistrationSchema]:
         """Get paginated list of registrations for a webinar"""
-        webinar = self.db.exec(select(Webinar).where(Webinar.id == webinar_id)).first()
+        webinars = await self.db.exec(select(Webinar).where(Webinar.id == webinar_id))
+        webinar = webinars.first()
         if not webinar:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -183,14 +192,17 @@ class WebinarService:
             )
         
         query = select(WebinarRegistration).where(WebinarRegistration.webinar_id == webinar_id)
-        total = self.db.exec(select(func.count(WebinarRegistration.id)).where(WebinarRegistration.webinar_id == webinar_id)).first()
+        tota = await self.db.exec(select(func.count(WebinarRegistration.id)).where(WebinarRegistration.webinar_id == webinar_id))
+        total = tota.first()
         
         offset = (page - 1) * limit
-        registrations = self.db.exec(query.offset(offset).limit(limit)).all()
+        registration = await self.db.exec(query.offset(offset).limit(limit))
+        registrations = registration.all()
         
         registration_schemas = []
         for reg in registrations:
-            user = self.db.exec(select(User).where(User.id == reg.user_id)).first()
+            users = await self.db.exec(select(User).where(User.id == reg.user_id))
+            user = users.first()
             registration_schemas.append(WebinarRegistrationSchema(
                 id=reg.id,
                 webinar_id=reg.webinar_id,
@@ -201,14 +213,15 @@ class WebinarService:
         
         return PaginatedResponse.create(registration_schemas, total, page, limit)
     
-    def unregister_from_webinar(self, webinar_id: str, user_id: str) -> Dict[str, str]:
+    async def unregister_from_webinar(self, webinar_id: str, user_id: str) -> Dict[str, str]:
         """Unregister a user from a webinar"""
-        registration = self.db.exec(
+        registrations = await self.db.exec(
             select(WebinarRegistration).where(
                 (WebinarRegistration.webinar_id == webinar_id) &
                 (WebinarRegistration.user_id == user_id)
             )
-        ).first()
+        )
+        registration = registrations.first()
         
         if not registration:
             raise HTTPException(
@@ -217,7 +230,7 @@ class WebinarService:
             )
         
         self.db.delete(registration)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Successfully unregistered from webinar"}
 

@@ -28,8 +28,8 @@ async def get_quizzes(
     db: Session = Depends(get_session)
 ):
     """Get paginated list of quizzes"""
-    quiz_service = QuizService(db)
-    return quiz_service.get_quizzes(page, limit, search, module_id)
+    quiz_service = QuizService(db) 
+    return await quiz_service.get_quizzes(page, limit, search, module_id)
 
 
 @router.post("/", response_model=QuizDetailSchema, status_code=status.HTTP_201_CREATED)
@@ -40,7 +40,7 @@ async def create_quiz(
 ):
     """Create a new quiz"""
     quiz_service = QuizService(db)
-    return quiz_service.create_quiz(quiz_data)
+    return await  quiz_service.create_quiz(quiz_data)
 
 
 @router.get("/{quiz_id}", response_model=QuizDetailSchema)
@@ -51,7 +51,7 @@ async def get_quiz_by_id(
 ):
     """Get quiz by ID with detailed information"""
     quiz_service = QuizService(db)
-    return quiz_service.get_quiz_by_id(quiz_id)
+    return await quiz_service.get_quiz_by_id(quiz_id)
 
 
 @router.put("/{quiz_id}", response_model=QuizDetailSchema)
@@ -63,7 +63,7 @@ async def update_quiz(
 ):
     """Update quiz information"""
     quiz_service = QuizService(db)
-    return quiz_service.update_quiz(quiz_id, quiz_data)
+    return await quiz_service.update_quiz(quiz_id, quiz_data)
 
 
 @router.delete("/{quiz_id}", response_model=MessageResponse)
@@ -74,7 +74,7 @@ async def delete_quiz(
 ):
     """Delete a quiz"""
     quiz_service = QuizService(db)
-    result = quiz_service.delete_quiz(quiz_id)
+    result = await quiz_service.delete_quiz(quiz_id)
     return MessageResponse(message=result["message"])
 
 
@@ -87,7 +87,7 @@ async def add_question_to_quiz(
 ):
     """Add a question to a quiz"""
     quiz_service = QuizService(db)
-    return quiz_service.add_question_to_quiz(quiz_id, question_data)
+    return await quiz_service.add_question_to_quiz(quiz_id, question_data)
 
 
 @router.put("/questions/{question_id}", response_model=QuestionSchema)
@@ -99,7 +99,7 @@ async def update_question(
 ):
     """Update question information"""
     quiz_service = QuizService(db)
-    return quiz_service.update_question(question_id, question_data)
+    return await quiz_service.update_question(question_id, question_data)
 
 
 @router.delete("/questions/{question_id}", response_model=MessageResponse)
@@ -110,7 +110,7 @@ async def delete_question(
 ):
     """Delete a question"""
     quiz_service = QuizService(db)
-    result = quiz_service.delete_question(question_id)
+    result = await quiz_service.delete_question(question_id)
     return MessageResponse(message=result["message"])
 
 
@@ -122,8 +122,9 @@ async def submit_quiz_attempt(
     db: Session = Depends(get_session)
 ):
     """Submit a quiz attempt"""
-    quiz_service = QuizService(db)
-    return quiz_service.submit_quiz_attempt(quiz_id, current_user.username, attempt_data)
+    quiz_service = QuizService(db) 
+    id = current_user.get("sub")
+    return await quiz_service.submit_quiz_attempt(quiz_id, id, attempt_data)
 
 
 @router.get("/{quiz_id}/attempts", response_model=PaginatedQuizAttemptsResponse)
@@ -131,13 +132,13 @@ async def get_quiz_attempts(
     quiz_id: str,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    user_id: Optional[str] = Query(None),
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Get paginated list of quiz attempts for a quiz"""
-    quiz_service = QuizService(db)
-    return quiz_service.get_quiz_attempts(quiz_id, page, limit, user_id)
+    quiz_service = QuizService(db) 
+    id = current_user.get("sub")
+    return await quiz_service.get_quiz_attempts(quiz_id, page, limit, user_id=id)
 
 
 @router.get("/attempts/{attempt_id}", response_model=QuizResponseDetailSchema)
@@ -148,7 +149,7 @@ async def get_quiz_attempt_by_id(
 ):
     """Get quiz attempt by ID with detailed information"""
     quiz_service = QuizService(db)
-    return quiz_service.get_quiz_attempt_by_id(attempt_id)
+    return await quiz_service.get_quiz_attempt_by_id(attempt_id)
 
 
 # Create router instance for export

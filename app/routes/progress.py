@@ -26,7 +26,7 @@ async def get_user_course_progress(
 ):
     """Get paginated list of course progress for a specific user"""
     progress_service = ProgressService(db)
-    return progress_service.get_user_course_progress(user_id, page, limit)
+    return await progress_service.get_user_course_progress(user_id, page, limit)
 
 
 @progress_router.get("/users/{user_id}/courses/{course_id}", response_model=UserCourseProgressSchema)
@@ -38,7 +38,7 @@ async def get_user_progress_for_course(
 ):
     """Get detailed progress for a user in a specific course"""
     progress_service = ProgressService(db)
-    return progress_service.get_user_progress_for_course(user_id, course_id)
+    return await progress_service.get_user_progress_for_course(user_id, course_id)
 
 
 @progress_router.post("/update", response_model=ContentProgressSchema)
@@ -48,8 +48,9 @@ async def update_content_progress(
     db: Session = Depends(get_session)
 ):
     """Update progress for a specific content item (module, video, document)"""
-    progress_service = ProgressService(db)
-    return progress_service.update_content_progress(current_user.username, progress_data)
+    progress_service = ProgressService(db) 
+    id = current_user.get("sub")
+    return await progress_service.update_content_progress(id, progress_data)
 
 
 @progress_router.get("/modules/{module_id}/progress", response_model=List[ContentProgressSchema])
@@ -59,8 +60,9 @@ async def get_module_content_progress(
     db: Session = Depends(get_session)
 ):
     """Get progress for all content items within a module for the current user"""
-    progress_service = ProgressService(db)
-    return progress_service.get_module_content_progress(current_user.username, module_id)
+    progress_service = ProgressService(db) 
+    id = current_user.get("sub")
+    return await progress_service.get_module_content_progress(id, module_id)
 
 
 # Create router instance for export

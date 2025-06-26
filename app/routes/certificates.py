@@ -27,7 +27,7 @@ async def get_certificates(
 ):
     """Get paginated list of certificates"""
     certificate_service = CertificateService(db)
-    return certificate_service.get_certificates(page, limit, user_id, course_id)
+    return await certificate_service.get_certificates(page, limit, user_id, course_id)
 
 
 @router.post("/", response_model=CertificateSchema, status_code=status.HTTP_201_CREATED)
@@ -38,7 +38,7 @@ async def create_certificate(
 ):
     """Create a new certificate"""
     certificate_service = CertificateService(db)
-    return certificate_service.create_certificate(certificate_data)
+    return await certificate_service.create_certificate(certificate_data)
 
 
 @router.get("/{certificate_id}", response_model=CertificateSchema)
@@ -49,7 +49,7 @@ async def get_certificate_by_id(
 ):
     """Get certificate by ID"""
     certificate_service = CertificateService(db)
-    return certificate_service.get_certificate_by_id(certificate_id)
+    return await certificate_service.get_certificate_by_id(certificate_id)
 
 
 @router.put("/{certificate_id}", response_model=CertificateSchema)
@@ -61,7 +61,7 @@ async def update_certificate(
 ):
     """Update certificate information"""
     certificate_service = CertificateService(db)
-    return certificate_service.update_certificate(certificate_id, certificate_data)
+    return await certificate_service.update_certificate(certificate_id, certificate_data)
 
 
 @router.delete("/{certificate_id}", response_model=MessageResponse)
@@ -72,7 +72,7 @@ async def delete_certificate(
 ):
     """Delete a certificate"""
     certificate_service = CertificateService(db)
-    result = certificate_service.delete_certificate(certificate_id)
+    result = await certificate_service.delete_certificate(certificate_id)
     return MessageResponse(message=result["message"])
 
 
@@ -86,7 +86,7 @@ async def get_certificates_by_user(
 ):
     """Get paginated list of certificates for a specific user"""
     certificate_service = CertificateService(db)
-    return certificate_service.get_certificates(page, limit, user_id=user_id)
+    return await certificate_service.get_certificates(page, limit, user_id=user_id)
 
 
 @router.get("/courses/{course_id}", response_model=PaginatedCertificatesResponse)
@@ -98,8 +98,9 @@ async def get_certificates_by_course(
     db: Session = Depends(get_session)
 ):
     """Get paginated list of certificates for a specific course"""
-    certificate_service = CertificateService(db)
-    return certificate_service.get_certificates(page, limit, course_id=course_id)
+    certificate_service = CertificateService(db) 
+    id = current_user.get("sub")
+    return await certificate_service.get_certificates(page, limit, course_id=course_id)
 
 
 # Create router instance for export

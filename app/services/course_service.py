@@ -26,7 +26,7 @@ class CourseService:
         self.db = db
         self.email_service = EmailService()
     
-    def get_courses(self, params: CourseListParams, page: int = 1, limit: int = 20) -> PaginatedResponse[CourseSummarySchema]:
+    async def get_courses(self, params: CourseListParams, page: int = 1, limit: int = 20) -> PaginatedResponse[CourseSummarySchema]:
         """Get paginated list of courses"""
         query = select(Course)
         
@@ -89,19 +89,22 @@ class CourseService:
                 (Course.description.ilike(search_term))
             )
         
-        total = self.db.exec(total_query).first()
-        
+        tota = await self.db.exec(total_query)
+        total = tota.first()
         # Apply pagination
         offset = (page - 1) * limit
         query = query.offset(offset).limit(limit)
         
-        courses = self.db.exec(query).all()
+        course = await self.db.exec(query)
+        courses = course.all()
         
         # Convert to summary schemas
         course_summaries = []
         for course in courses:
-            category = self.db.exec(select(Category).where(Category.id == course.category_id)).first()
-            creator = self.db.exec(select(User).where(User.id == course.creator_id)).first()
+            categor =await  self.db.exec(select(Category).where(Category.id == course.category_id))
+            category = categor.first()
+            creato = await self.db.exec(select(User).where(User.id == course.creator_id))
+            creator = creato.first()
             
             # Count modules and enrollments
             total_modules = len(course.modules)
@@ -183,10 +186,11 @@ class CourseService:
             updated_at=course.updated_at
         )
     
-    def create_course(self, course_data: CourseCreateSchema, creator_id: str) -> CourseDetailSchema:
+    async def create_course(self, course_data: CourseCreateSchema, creator_id: str) -> CourseDetailSchema:
         """Create a new course"""
         # Validate category
-        category = self.db.exec(select(Category).where(Category.id == course_data.category_id)).first()
+        categor = await self.db.exec(select(Category).where(Category.id == course_data.category_id))
+        category = categor.first()
         if not category:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -196,7 +200,8 @@ class CourseService:
         # Validate prerequisites
         if course_data.prerequisites:
             for prereq_id in course_data.prerequisites:
-                prereq_course = self.db.exec(select(Course).where(Course.id == prereq_id)).first()
+                prereq_courses = await self.db.exec(select(Course).where(Course.id == prereq_id))
+                prereq_course = prereq_courses.first()
                 if not prereq_course:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -219,14 +224,15 @@ class CourseService:
         )
         
         self.db.add(new_course)
-        self.db.commit()
-        self.db.refresh(new_course)
+        await self.db.commit()
+        await self.db.refresh(new_course)
         
-        return self.get_course_by_id(new_course.id)
+        return await self.get_course_by_id(new_course.id)
     
-    def update_course(self, course_id: str, course_data: CourseUpdateSchema) -> CourseDetailSchema:
+    async def update_course(self, course_id: str, course_data: CourseUpdateSchema) -> CourseDetailSchema:
         """Update course information"""
-        course = self.db.exec(select(Course).where(Course.id == course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == course_id))
+        course = courses.first()
         
         if not course:
             raise HTTPException(
@@ -241,7 +247,8 @@ class CourseService:
             course.description = course_data.description
         if course_data.category_id is not None:
             # Validate category
-            category = self.db.exec(select(Category).where(Category.id == course_data.category_id)).first()
+            categor = await self.db.exec(select(Category).where(Category.id == course_data.category_id))
+            category = categor.first()
             if not category:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -257,7 +264,8 @@ class CourseService:
         if course_data.prerequisites is not None:
             # Validate prerequisites
             for prereq_id in course_data.prerequisites:
-                prereq_course = self.db.exec(select(Course).where(Course.id == prereq_id)).first()
+                prereq_courses = await self.db.exec(select(Course).where(Course.id == prereq_id))
+                prereq_course = prereq_courses.first()
                 if not prereq_course:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -270,14 +278,15 @@ class CourseService:
             course.thumbnail_url = course_data.thumbnail_url
         
         self.db.add(course)
-        self.db.commit()
-        self.db.refresh(course)
+        await self.db.commit()
+        await self.db.refresh(course)
         
-        return self.get_course_by_id(course.id)
+        return await self.get_course_by_id(course.id)
     
-    def publish_course(self, course_id: str) -> CourseDetailSchema:
+    async def publish_course(self, course_id: str) -> CourseDetailSchema:
         """Publish a course"""
-        course = self.db.exec(select(Course).where(Course.id == course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == course_id))
+        course = courses.first()
         
         if not course:
             raise HTTPException(
@@ -302,14 +311,15 @@ class CourseService:
         course.published_at = datetime.utcnow()
         
         self.db.add(course)
-        self.db.commit()
-        self.db.refresh(course)
+        await self.db.commit()
+        await self.db.refresh(course)
         
-        return self.get_course_by_id(course.id)
+        return await self.get_course_by_id(course.id)
     
-    def delete_course(self, course_id: str) -> Dict[str, str]:
+    async def delete_course(self, course_id: str) -> Dict[str, str]:
         """Delete a course"""
-        course = self.db.exec(select(Course).where(Course.id == course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == course_id))
+        course = courses.first()
         
         if not course:
             raise HTTPException(
@@ -325,19 +335,21 @@ class CourseService:
             )
         
         self.db.delete(course)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Course deleted successfully"}
     
     # Category management methods
-    def get_categories(self, page: int = 1, limit: int = 20) -> PaginatedResponse[CategorySchema]:
+    async def get_categories(self, page: int = 1, limit: int = 20) -> PaginatedResponse[CategorySchema]:
         """Get paginated list of categories"""
         query = select(Category).order_by(Category.name)
         
-        total = self.db.exec(select(func.count(Category.id))).first()
+        tota = await self.db.exec(select(func.count(Category.id)))
+        total = tota.first()
         
         offset = (page - 1) * limit
-        categories = self.db.exec(query.offset(offset).limit(limit)).all()
+        categorie = await self.db.exec(query.offset(offset).limit(limit))
+        categories = categorie.all()
         
         category_schemas = []
         for category in categories:
@@ -355,12 +367,13 @@ class CourseService:
         
         return PaginatedResponse.create(category_schemas, total, page, limit)
     
-    def create_category(self, category_data: CategoryCreateSchema) -> CategorySchema:
+    async def create_category(self, category_data: CategoryCreateSchema) -> CategorySchema:
         """Create a new category"""
         # Check if category name already exists
-        existing_category = self.db.exec(
+        existing_categor = await self.db.exec(
             select(Category).where(Category.name == category_data.name)
-        ).first()
+        )
+        existing_category = existing_categor.first()
         
         if existing_category:
             raise HTTPException(
@@ -370,9 +383,10 @@ class CourseService:
         
         # Validate parent category if provided
         if category_data.parent_id:
-            parent_category = self.db.exec(
+            parent_categor = await self.db.exec(
                 select(Category).where(Category.id == category_data.parent_id)
-            ).first()
+            )
+            parent_category = parent_categor.first()
             if not parent_category:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -387,8 +401,8 @@ class CourseService:
         )
         
         self.db.add(new_category)
-        self.db.commit()
-        self.db.refresh(new_category)
+        await self.db.commit()
+        await self.db.refresh(new_category)
         
         return CategorySchema(
             id=new_category.id,
@@ -405,7 +419,8 @@ class CourseService:
     async def enroll_user(self, enrollment_data: EnrollmentCreateSchema, assigned_by: Optional[str] = None) -> EnrollmentSchema:
         """Enroll a user in a course"""
         # Check if user exists
-        user = self.db.exec(select(User).where(User.id == enrollment_data.user_id)).first()
+        users = await self.db.exec(select(User).where(User.id == enrollment_data.user_id))
+        user = users.first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -413,7 +428,8 @@ class CourseService:
             )
         
         # Check if course exists
-        course = self.db.exec(select(Course).where(Course.id == enrollment_data.course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == enrollment_data.course_id))
+        course = courses.first()
         if not course:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -421,12 +437,13 @@ class CourseService:
             )
         
         # Check if user is already enrolled
-        existing_enrollment = self.db.exec(
+        existing_enrollments = await self.db.exec(
             select(Enrollment).where(
                 (Enrollment.user_id == enrollment_data.user_id) &
                 (Enrollment.course_id == enrollment_data.course_id)
             )
-        ).first()
+        )
+        existing_enrollment = existing_enrollments.first()
         
         if existing_enrollment:
             raise HTTPException(
@@ -445,8 +462,8 @@ class CourseService:
         )
         
         self.db.add(new_enrollment)
-        self.db.commit()
-        self.db.refresh(new_enrollment)
+        await self.db.commit()
+        await self.db.refresh(new_enrollment)
         
         # Send enrollment email
         await self.email_service.send_course_assignment_email(
@@ -473,7 +490,7 @@ class CourseService:
             updated_at=new_enrollment.updated_at
         )
     
-    def bulk_enroll_users(self, bulk_data: BulkEnrollmentSchema, assigned_by: Optional[str] = None) -> Dict[str, Any]:
+    async def bulk_enroll_users(self, bulk_data: BulkEnrollmentSchema, assigned_by: Optional[str] = None) -> Dict[str, Any]:
         """Enroll multiple users in a course"""
         successful_enrollments = []
         failed_enrollments = []
@@ -485,7 +502,7 @@ class CourseService:
                     course_id=bulk_data.course_id,
                     due_date=bulk_data.due_date
                 )
-                enrollment = self.enroll_user(enrollment_data, assigned_by)
+                enrollment =await self.enroll_user(enrollment_data, assigned_by)
                 successful_enrollments.append(enrollment)
             except Exception as e:
                 failed_enrollments.append({
@@ -499,37 +516,43 @@ class CourseService:
             "failures": failed_enrollments
         }
     
-    def get_course_stats(self) -> CourseStatsSchema:
+    async def get_course_stats(self) -> CourseStatsSchema:
         """Get course statistics"""
-        total_courses = self.db.exec(select(func.count(Course.id))).first()
-        published_courses = self.db.exec(
+        total_course = await self.db.exec(select(func.count(Course.id)))
+        total_courses = total_course.first()
+        published_course =await  self.db.exec(
             select(func.count(Course.id)).where(Course.status == CourseStatus.PUBLISHED)
-        ).first()
-        draft_courses = self.db.exec(
+        )
+        published_courses = published_course.first()
+        draft_course = await self.db.exec(
             select(func.count(Course.id)).where(Course.status == CourseStatus.DRAFT)
-        ).first()
+        )
+        draft_courses = draft_course.first()
         
         # Courses by category
-        courses_by_category = self.db.exec(
+        courses_by_categor = await self.db.exec(
             select(Category.name, func.count(Course.id))
             .join(Course, Course.category_id == Category.id)
             .group_by(Category.name)
-        ).all()
+        )
+        courses_by_category = courses_by_categor.all()
         
         # Courses by difficulty
-        courses_by_difficulty = self.db.exec(
+        courses_by_difficult = await self.db.exec(
             select(Course.difficulty_level, func.count(Course.id))
             .group_by(Course.difficulty_level)
-        ).all()
+        )
+        courses_by_difficulty = courses_by_difficult.all()
         
         # Most popular courses (by enrollment count)
-        most_popular_courses = self.db.exec(
+        most_popular_course = await self.db.exec(
             select(Course.title, func.count(Enrollment.id))
             .join(Enrollment, Enrollment.course_id == Course.id, isouter=True)
             .group_by(Course.id, Course.title)
             .order_by(func.count(Enrollment.id).desc())
             .limit(10)
-        ).all()
+        )
+        most_popular_courses = most_popular_course.all()
         
         return CourseStatsSchema(
             total_courses=total_courses or 0,

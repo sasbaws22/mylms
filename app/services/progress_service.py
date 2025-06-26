@@ -24,10 +24,11 @@ class ProgressService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_user_course_progress(self, user_id: str, page: int = 1, limit: int = 20) -> PaginatedResponse[UserCourseProgressSchema]:
+    async def get_user_course_progress(self, user_id: str, page: int = 1, limit: int = 20) -> PaginatedResponse[UserCourseProgressSchema]:
         """Get paginated list of course progress for a specific user"""
         # Verify user exists
-        user = self.db.exec(select(User).where(User.id == user_id)).first()
+        users = await self.db.exec(select(User).where(User.id == user_id))
+        user = users.first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -36,25 +37,29 @@ class ProgressService:
         
         query = select(Enrollment).where(Enrollment.user_id == user_id)
         
-        total = self.db.exec(select(func.count(Enrollment.id)).where(Enrollment.user_id == user_id)).first()
+        tota = await self.db.exec(select(func.count(Enrollment.id)).where(Enrollment.user_id == user_id))
+        total = tota.first()
         
         offset = (page - 1) * limit
-        enrollments = self.db.exec(query.offset(offset).limit(limit)).all()
+        enrollment = await self.db.exec(query.offset(offset).limit(limit))
+        enrollments = enrollment.all()
         
         course_progress_list = []
         for enrollment in enrollments:
-            course = self.db.exec(select(Course).where(Course.id == enrollment.course_id)).first()
+            courses = await self.db.exec(select(Course).where(Course.id == enrollment.course_id))
+            course = courses.first()
             if not course:
                 continue
             
             # Calculate course progress
             total_modules = len(course.modules)
-            completed_modules = self.db.exec(
+            completed_module = await self.db.exec(
                 select(func.count(ModuleProgress.id)).where(
                     (ModuleProgress.enrollment_id == enrollment.id) &
                     (ModuleProgress.status == ProgressStatus.COMPLETED)
                 )
-            ).first()
+            )
+            completed_modules = completed_module.first()
             
             progress_percentage = (completed_modules / total_modules * 100) if total_modules > 0 else 0
             
@@ -76,13 +81,14 @@ class ProgressService:
         
         return PaginatedResponse.create(course_progress_list, total, page, limit)
     
-    def get_user_progress_for_course(self, user_id: str, course_id: str) -> UserCourseProgressSchema:
+    async def get_user_progress_for_course(self, user_id: str, course_id: str) -> UserCourseProgressSchema:
         """Get detailed progress for a user in a specific course"""
-        enrollment = self.db.exec(
+        enrollments = await self.db.exec(
             select(Enrollment).where(
                 (Enrollment.user_id == user_id) & (Enrollment.course_id == course_id)
             )
-        ).first()
+        )
+        enrollment = enrollments.first()
         
         if not enrollment:
             raise HTTPException(
@@ -90,7 +96,8 @@ class ProgressService:
                 detail="User not enrolled in this course"
             )
         
-        course = self.db.exec(select(Course).where(Course.id == course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == course_id))
+        course = courses.first()
         if not course:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -98,12 +105,13 @@ class ProgressService:
             )
         
         total_modules = len(course.modules)
-        completed_modules = self.db.exec(
+        completed_moduless =await  self.db.exec(
             select(func.count(ModuleProgress.id)).where(
                 (ModuleProgress.enrollment_id == enrollment.id) &
                 (ModuleProgress.status == ProgressStatus.COMPLETED)
             )
-        ).first()
+        )
+        completed_modules = completed_moduless.first()
         
         progress_percentage = (completed_modules / total_modules * 100) if total_modules > 0 else 0
         
@@ -123,15 +131,16 @@ class ProgressService:
             last_accessed=enrollment.updated_at # Or a more accurate last accessed timestamp
         )
     
-    def update_content_progress(self, user_id: str, progress_data: ProgressUpdateSchema) -> ContentProgressSchema:
+    async def update_content_progress(self, user_id: str, progress_data: ProgressUpdateSchema) -> ContentProgressSchema:
         """Update progress for a specific content item (module, video, document, quiz)"""
         # Find the enrollment for the user and course/module
-        enrollment = self.db.exec(
+        enrollments = await self.db.exec(
             select(Enrollment).where(
                 (Enrollment.user_id == user_id) &
                 (Enrollment.course_id == progress_data.course_id)
             )
-        ).first()
+        )
+        enrollment = enrollments.first()
 
         if not enrollment:
             raise HTTPException(
@@ -140,12 +149,13 @@ class ProgressService:
             )
 
         # Get or create ModuleProgress
-        module_progress = self.db.exec(
+        module_progresss = await self.db.exec(
             select(ModuleProgress).where(
                 (ModuleProgress.enrollment_id == enrollment.id) &
                 (ModuleProgress.module_id == progress_data.module_id)
             )
-        ).first()
+        ) 
+        module_progress = module_progresss.first()
 
         if not module_progress:
             module_progress = ModuleProgress(
@@ -160,12 +170,13 @@ class ProgressService:
             self.db.flush()
 
         # Update ContentProgress
-        content_progress = self.db.exec(
+        content_progresss = await  self.db.exec(
             select(ContentProgress).where(
                 (ContentProgress.module_progress_id == module_progress.id) &
                 (ContentProgress.content_type == progress_data.content_type)
             )
-        ).first()
+        )
+        content_progress = content_progresss.first()
 
         if not content_progress:
             content_progress = ContentProgress(
@@ -183,30 +194,32 @@ class ProgressService:
             content_progress.last_accessed = datetime.utcnow()
         
         self.db.add(content_progress)
-        self.db.commit()
-        self.db.refresh(content_progress)
+        await self.db.commit()
+        await self.db.refresh(content_progress)
 
         # Update module progress based on content progress
-        self._update_module_progress_status(module_progress.id)
-        self._update_enrollment_progress_status(enrollment.id)
+        await self._update_module_progress_status(module_progress.id)
+        await self._update_enrollment_progress_status(enrollment.id)
 
         return ContentProgressSchema.model_validate(content_progress)
 
-    def get_module_content_progress(self, user_id: str, module_id: str) -> List[ContentProgressSchema]:
+    async def get_module_content_progress(self, user_id: str, module_id: str) -> List[ContentProgressSchema]:
         """Get progress for all content items within a module for the current user"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         if not module:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Module not found"
             )
 
-        enrollment = self.db.exec(
+        enrollments =await  self.db.exec(
             select(Enrollment).where(
                 (Enrollment.user_id == user_id) &
                 (Enrollment.course_id == module.course_id)
             )
-        ).first()
+        )
+        enrollment = enrollments.first()
 
         if not enrollment:
             raise HTTPException(
@@ -214,30 +227,35 @@ class ProgressService:
                 detail="User not enrolled in this course"
             )
 
-        module_progress = self.db.exec(
+        module_progresss =await  self.db.exec(
             select(ModuleProgress).where(
                 (ModuleProgress.enrollment_id == enrollment.id) &
                 (ModuleProgress.module_id == module_id)
             )
-        ).first()
+        )
+        module_progress = module_progresss.first()
 
         if not module_progress:
             return [] # No progress yet for this module
 
-        content_progress_list = self.db.exec(
+        content_progress_lists = await self.db.exec(
             select(ContentProgress).where(ContentProgress.module_progress_id == module_progress.id)
-        ).all()
+        )
+        content_progress_list = content_progress_lists.all()
 
         return [ContentProgressSchema.model_validate(cp) for cp in content_progress_list]
 
-    def _update_module_progress_status(self, module_progress_id: str):
-        module_progress = self.db.exec(select(ModuleProgress).where(ModuleProgress.id == module_progress_id)).first()
+    async def _update_module_progress_status(self, module_progress_id: str):
+        module_progresss = await self.db.exec(select(ModuleProgress).where(ModuleProgress.id == module_progress_id))
+        module_progress = module_progresss.first() 
+
         if not module_progress:
             return
 
-        all_content_progress = self.db.exec(
+        all_content_progresss = await self.db.exec(
             select(ContentProgress).where(ContentProgress.module_progress_id == module_progress_id)
-        ).all()
+        )
+        all_content_progress = all_content_progresss.all()
 
         if not all_content_progress:
             module_progress.status = ProgressStatus.NOT_STARTED
@@ -252,15 +270,17 @@ class ProgressService:
                 module_progress.status = ProgressStatus.NOT_STARTED
         
         self.db.add(module_progress)
-        self.db.commit()
-        self.db.refresh(module_progress)
+        await self.db.commit()
+        await self.db.refresh(module_progress)
 
-    def _update_enrollment_progress_status(self, enrollment_id: str):
-        enrollment = self.db.exec(select(Enrollment).where(Enrollment.id == enrollment_id)).first()
+    async def _update_enrollment_progress_status(self, enrollment_id: str):
+        enrollments = await self.db.exec(select(Enrollment).where(Enrollment.id == enrollment_id))
+        enrollment = enrollments.first()
         if not enrollment:
             return
 
-        course = self.db.exec(select(Course).where(Course.id == enrollment.course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == enrollment.course_id))
+        course = courses.first()
         if not course:
             return
 
@@ -269,12 +289,13 @@ class ProgressService:
             enrollment.progress_percentage = 100.0
             enrollment.status = EnrollmentStatus.COMPLETED
         else:
-            completed_modules_count = self.db.exec(
+            completed_modules_counts = await self.db.exec(
                 select(func.count(ModuleProgress.id)).where(
                     (ModuleProgress.enrollment_id == enrollment_id) &
                     (ModuleProgress.status == ProgressStatus.COMPLETED)
                 )
-            ).first()
+            )
+            completed_modules_count = completed_modules_counts.first() or 0
             
             enrollment.progress_percentage = (completed_modules_count / total_modules * 100) if total_modules > 0 else 0
             
@@ -287,7 +308,7 @@ class ProgressService:
                 enrollment.status = EnrollmentStatus.ENROLLED # Or NOT_STARTED if that's a status
         
         self.db.add(enrollment)
-        self.db.commit()
-        self.db.refresh(enrollment)
+        await self.db.commit()
+        await self.db.refresh(enrollment)
 
 

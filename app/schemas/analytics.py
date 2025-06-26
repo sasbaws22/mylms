@@ -41,29 +41,10 @@ class UserAnalyticsSchema(BaseSchema):
     """User analytics schema"""
     user_id: str
     user_name: str
-    department: Optional[str]
-    
-    # Learning metrics
     total_enrollments: int
     completed_courses: int
-    in_progress_courses: int
-    completion_rate: float
-    average_score: Optional[float]
-    total_time_spent: int  # in minutes
-    
-    # Activity metrics
-    login_count: int
-    last_login: Optional[datetime]
-    active_days: int
-    streak_days: int
-    
-    # Engagement metrics
     quiz_attempts: int
     webinar_attendance: int
-    document_downloads: int
-    video_watch_time: int  # in minutes
-    
-    # Achievements
     total_points: int
     total_certificates: int
     total_badges: int
@@ -212,21 +193,8 @@ class DashboardMetricsSchema(BaseSchema):
     total_courses: int
     total_enrollments: int
     completion_rate: float
-    
-    # Recent activity
-    new_enrollments_today: int
-    completions_today: int
-    active_users_today: int
-    
-    # Trends (last 30 days)
-    enrollment_trend: List[LearningTrendSchema]
-    completion_trend: List[LearningTrendSchema]
-    user_activity_trend: List[LearningTrendSchema]
-    
-    # Top performers
-    top_courses: List[Dict[str, Any]]
-    top_learners: List[Dict[str, Any]]
-    top_departments: List[Dict[str, Any]]
+
+
 
 
 class ExportRequestSchema(BaseSchema):

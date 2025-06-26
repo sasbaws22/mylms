@@ -29,7 +29,7 @@ async def get_modules_by_course(
 ):
     """Get modules for a specific course"""
     module_service = ModuleService(db)
-    return module_service.get_modules_by_course(course_id, page, limit)
+    return await module_service.get_modules_by_course(course_id, page, limit)
 
 
 @router.post("/course/{course_id}", response_model=ModuleDetailSchema, status_code=status.HTTP_201_CREATED)
@@ -41,7 +41,7 @@ async def create_module(
 ):
     """Create a new module in a course"""
     module_service = ModuleService(db)
-    return module_service.create_module(course_id, module_data)
+    return await  module_service.create_module(course_id, module_data)
 
 
 @router.get("/{module_id}", response_model=ModuleDetailSchema)
@@ -51,8 +51,9 @@ async def get_module_by_id(
     db: Session = Depends(get_session)
 ):
     """Get module by ID with detailed information"""
-    module_service = ModuleService(db)
-    return module_service.get_module_by_id(module_id, current_user.username)
+    module_service = ModuleService(db) 
+    id = current_user.get("sub")
+    return await  module_service.get_module_by_id(module_id, id)
 
 
 @router.put("/{module_id}", response_model=ModuleDetailSchema)
@@ -63,8 +64,9 @@ async def update_module(
     db: Session = Depends(get_session)
 ):
     """Update module information"""
-    module_service = ModuleService(db)
-    return module_service.update_module(module_id, module_data)
+    module_service = ModuleService(db) 
+
+    return await module_service.update_module(module_id, module_data)
 
 
 @router.delete("/{module_id}", response_model=MessageResponse)
@@ -75,7 +77,7 @@ async def delete_module(
 ):
     """Delete a module"""
     module_service = ModuleService(db)
-    result = module_service.delete_module(module_id)
+    result = await  module_service.delete_module(module_id)
     return MessageResponse(message=result["message"])
 
 
@@ -88,7 +90,7 @@ async def get_module_documents(
 ):
     """Get all documents for a module"""
     module_service = ModuleService(db)
-    return module_service.get_module_documents(module_id)
+    return await  module_service.get_module_documents(module_id)
 
 
 @router.post("/{module_id}/documents", response_model=DocumentSchema, status_code=status.HTTP_201_CREATED)
@@ -114,7 +116,7 @@ async def add_document_to_module(
         is_downloadable=is_downloadable
     )
     
-    return module_service.add_document_to_module(
+    return await  module_service.add_document_to_module(
         module_id, 
         document_data, 
         file_upload.file_path, 
@@ -130,7 +132,7 @@ async def delete_document(
 ):
     """Delete a document"""
     module_service = ModuleService(db)
-    result = module_service.delete_document(document_id)
+    result = await module_service.delete_document(document_id)
     return MessageResponse(message=result["message"])
 
 
@@ -143,7 +145,7 @@ async def get_module_videos(
 ):
     """Get all videos for a module"""
     module_service = ModuleService(db)
-    return module_service.get_module_videos(module_id)
+    return await module_service.get_module_videos(module_id)
 
 
 @router.post("/{module_id}/videos", response_model=VideoSchema, status_code=status.HTTP_201_CREATED)
@@ -155,7 +157,7 @@ async def add_video_to_module(
 ):
     """Add a video to a module"""
     module_service = ModuleService(db)
-    return module_service.add_video_to_module(module_id, video_data)
+    return await module_service.add_video_to_module(module_id, video_data)
 
 
 @router.put("/videos/{video_id}", response_model=VideoSchema)
@@ -167,7 +169,7 @@ async def update_video(
 ):
     """Update video information"""
     module_service = ModuleService(db)
-    return module_service.update_video(video_id, video_data)
+    return await module_service.update_video(video_id, video_data)
 
 
 @router.delete("/videos/{video_id}", response_model=MessageResponse)
@@ -178,7 +180,7 @@ async def delete_video(
 ):
     """Delete a video"""
     module_service = ModuleService(db)
-    result = module_service.delete_video(video_id)
+    result = await module_service.delete_video(video_id)
     return MessageResponse(message=result["message"])
 
 
@@ -204,7 +206,7 @@ async def reorder_modules(
 ):
     """Reorder modules in a course"""
     module_service = ModuleService(db)
-    result = module_service.reorder_modules(course_id, module_orders)
+    result = await module_service.reorder_modules(course_id, module_orders)
     return MessageResponse(message=result["message"])
 
 

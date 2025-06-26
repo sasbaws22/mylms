@@ -29,7 +29,7 @@ async def get_webinars(
 ):
     """Get paginated list of webinars"""
     webinar_service = WebinarService(db)
-    return webinar_service.get_webinars(page, limit, search, status)
+    return await webinar_service.get_webinars(page, limit, search, status)
 
 
 @router.post("/", response_model=WebinarSchema, status_code=status.HTTP_201_CREATED)
@@ -40,7 +40,7 @@ async def create_webinar(
 ):
     """Create a new webinar"""
     webinar_service = WebinarService(db)
-    return webinar_service.create_webinar(webinar_data)
+    return await webinar_service.create_webinar(webinar_data)
 
 
 @router.get("/{webinar_id}", response_model=WebinarSchema)
@@ -51,7 +51,7 @@ async def get_webinar_by_id(
 ):
     """Get webinar by ID"""
     webinar_service = WebinarService(db)
-    return webinar_service.get_webinar_by_id(webinar_id)
+    return await webinar_service.get_webinar_by_id(webinar_id)
 
 
 @router.put("/{webinar_id}", response_model=WebinarSchema)
@@ -63,7 +63,7 @@ async def update_webinar(
 ):
     """Update webinar information"""
     webinar_service = WebinarService(db)
-    return webinar_service.update_webinar(webinar_id, webinar_data)
+    return await webinar_service.update_webinar(webinar_id, webinar_data)
 
 
 @router.delete("/{webinar_id}", response_model=MessageResponse)
@@ -74,7 +74,7 @@ async def delete_webinar(
 ):
     """Delete a webinar"""
     webinar_service = WebinarService(db)
-    result = webinar_service.delete_webinar(webinar_id)
+    result =await  webinar_service.delete_webinar(webinar_id)
     return MessageResponse(message=result["message"])
 
 
@@ -85,8 +85,9 @@ async def register_for_webinar(
     db: Session = Depends(get_session)
 ):
     """Register current user for a webinar"""
-    webinar_service = WebinarService(db)
-    return webinar_service.register_for_webinar(webinar_id, current_user.username)
+    webinar_service = WebinarService(db) 
+    id = current_user.get("sub")
+    return await  webinar_service.register_for_webinar(webinar_id, id)
 
 
 @router.get("/{webinar_id}/registrations", response_model=PaginatedWebinarRegistrationsResponse)
@@ -99,7 +100,7 @@ async def get_webinar_registrations(
 ):
     """Get paginated list of registrations for a webinar"""
     webinar_service = WebinarService(db)
-    return webinar_service.get_webinar_registrations(webinar_id, page, limit)
+    return await webinar_service.get_webinar_registrations(webinar_id, page, limit)
 
 
 @router.delete("/{webinar_id}/unregister", response_model=MessageResponse)
@@ -109,8 +110,9 @@ async def unregister_from_webinar(
     db: Session = Depends(get_session)
 ):
     """Unregister current user from a webinar"""
-    webinar_service = WebinarService(db)
-    result = webinar_service.unregister_from_webinar(webinar_id, current_user.username)
+    webinar_service = WebinarService(db) 
+    id = current_user.get("sub")
+    result = await webinar_service.unregister_from_webinar(webinar_id, id )
     return MessageResponse(message=result["message"])
 
 

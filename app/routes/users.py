@@ -48,7 +48,7 @@ async def create_user(
 ):
     """Create a new user (admin function)"""
     user_service = UserService(db)
-    return user_service.create_user(user_data)
+    return await user_service.create_user(user_data)
 
 
 @router.get("/stats", response_model=UserStatsSchema)
@@ -69,9 +69,9 @@ async def get_current_user_profile(
     print (f"Current user: {current_user}")
     """Get current user profile"""
     user_service = UserService(db) 
-    username = current_user.get("username")
+    id = current_user.get("sub")
    
-    return await  user_service.get_user_by_id(username)
+    return await  user_service.get_user_by_id(id)
 
 
 @router.put("/profile", response_model=UserDetailSchema)
@@ -82,7 +82,8 @@ async def update_current_user_profile(
 ):
     """Update current user profile"""
     user_service = UserService(db)
-    return await user_service.update_user(current_user.username, user_data)
+    id = current_user.get("sub")
+    return await user_service.update_user(id, user_data)
 
 
 @router.get("/{user_id}", response_model=UserDetailSchema)

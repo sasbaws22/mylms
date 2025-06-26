@@ -25,10 +25,11 @@ class ModuleService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_modules_by_course(self, course_id: str, page: int = 1, limit: int = 20) -> PaginatedResponse[ModuleResponseSchema]:
+    async def get_modules_by_course(self, course_id: str, page: int = 1, limit: int = 20) -> PaginatedResponse[ModuleResponseSchema]:
         """Get modules for a specific course"""
         # Verify course exists
-        course = self.db.exec(select(Course).where(Course.id == course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == course_id))
+        course = courses.first()
         if not course:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -37,10 +38,12 @@ class ModuleService:
         
         query = select(Module).where(Module.course_id == course_id).order_by(Module.order_index)
         
-        total = self.db.exec(select(func.count(Module.id)).where(Module.course_id == course_id)).first()
+        tota = await self.db.exec(select(func.count(Module.id)).where(Module.course_id == course_id))
+        total = tota.first()
         
         offset = (page - 1) * limit
-        modules = self.db.exec(query.offset(offset).limit(limit)).all()
+        moduless = await self.db.exec(query.offset(offset).limit(limit))
+        modules = moduless.all()
         
         module_schemas = []
         for module in modules:
@@ -69,9 +72,10 @@ class ModuleService:
         
         return PaginatedResponse.create(module_schemas, total, page, limit)
     
-    def get_module_by_id(self, module_id: str, user_id: Optional[str] = None) -> ModuleDetailSchema:
+    async def get_module_by_id(self, module_id: str, user_id: Optional[str] = None) -> ModuleDetailSchema:
         """Get module by ID with detailed information"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules= await self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         
         if not module:
             raise HTTPException(
@@ -80,7 +84,8 @@ class ModuleService:
             )
         
         # Get course information
-        course = self.db.exec(select(Course).where(Course.id == module.course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == module.course_id))
+        course = courses.first()
         
         # Get related content
         documents = [
@@ -120,10 +125,11 @@ class ModuleService:
             updated_at=module.updated_at
         )
     
-    def create_module(self, course_id: str, module_data: ModuleCreateSchema) -> ModuleDetailSchema:
+    async def create_module(self, course_id: str, module_data: ModuleCreateSchema) -> ModuleDetailSchema:
         """Create a new module"""
         # Verify course exists
-        course = self.db.exec(select(Course).where(Course.id == course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == course_id))
+        course = courses.first()
         if not course:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -132,9 +138,10 @@ class ModuleService:
         
         # Get next order index if not provided
         if module_data.order_index == 0:
-            max_order = self.db.exec(
+            max_orders = await self.db.exec(
                 select(func.max(Module.order_index)).where(Module.course_id == course_id)
-            ).first()
+            )
+            max_order = max_orders.first()
             module_data.order_index = (max_order or 0) + 1
         
         # Create new module
@@ -151,14 +158,15 @@ class ModuleService:
         )
         
         self.db.add(new_module)
-        self.db.commit()
-        self.db.refresh(new_module)
+        await self.db.commit()
+        await self.db.refresh(new_module)
         
-        return self.get_module_by_id(new_module.id)
+        return await self.get_module_by_id(new_module.id)
     
-    def update_module(self, module_id: str, module_data: ModuleUpdateSchema) -> ModuleDetailSchema:
+    async def update_module(self, module_id: str, module_data: ModuleUpdateSchema) -> ModuleDetailSchema:
         """Update module information"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         
         if not module:
             raise HTTPException(
@@ -185,14 +193,15 @@ class ModuleService:
             module.estimated_duration = module_data.estimated_duration
         
         self.db.add(module)
-        self.db.commit()
-        self.db.refresh(module)
+        await self.db.commit()
+        await self.db.refresh(module)
         
-        return self.get_module_by_id(module.id)
+        return await self.get_module_by_id(module.id)
     
-    def delete_module(self, module_id: str) -> Dict[str, str]:
+    async def delete_module(self, module_id: str) -> Dict[str, str]:
         """Delete a module"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         
         if not module:
             raise HTTPException(
@@ -201,14 +210,15 @@ class ModuleService:
             )
         
         self.db.delete(module)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Module deleted successfully"}
     
     # Document management methods
-    def add_document_to_module(self, module_id: str, document_data: DocumentCreateSchema, file_path: str, file_size: int) -> DocumentSchema:
+    async def add_document_to_module(self, module_id: str, document_data: DocumentCreateSchema, file_path: str, file_size: int) -> DocumentSchema:
         """Add a document to a module"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         
         if not module:
             raise HTTPException(
@@ -226,14 +236,15 @@ class ModuleService:
         )
         
         self.db.add(new_document)
-        self.db.commit()
-        self.db.refresh(new_document)
+        await self.db.commit()
+        await self.db.refresh(new_document)
         
-        return DocumentSchema.model_validate(new_document)
+        return new_document
     
-    def get_module_documents(self, module_id: str) -> List[DocumentSchema]:
+    async def get_module_documents(self, module_id: str) -> List[DocumentSchema]:
         """Get all documents for a module"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules = await  self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         
         if not module:
             raise HTTPException(
@@ -241,13 +252,15 @@ class ModuleService:
                 detail="Module not found"
             )
         
-        documents = self.db.exec(select(Document).where(Document.module_id == module_id)).all()
+        document = await self.db.exec(select(Document).where(Document.module_id == module_id))
+        documents = document.all()
         
-        return [DocumentSchema.model_validate(doc) for doc in documents]
+        return documents
     
-    def delete_document(self, document_id: str) -> Dict[str, str]:
+    async def delete_document(self, document_id: str) -> Dict[str, str]:
         """Delete a document"""
-        document = self.db.exec(select(Document).where(Document.id == document_id)).first()
+        documents = await self.db.exec(select(Document).where(Document.id == document_id))
+        document = documents.first()
         
         if not document:
             raise HTTPException(
@@ -260,14 +273,15 @@ class ModuleService:
             os.remove(document.file_path)
         
         self.db.delete(document)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Document deleted successfully"}
     
     # Video management methods
-    def add_video_to_module(self, module_id: str, video_data: VideoCreateSchema) -> VideoSchema:
+    async def add_video_to_module(self, module_id: str, video_data: VideoCreateSchema) -> VideoSchema:
         """Add a video to a module"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         
         if not module:
             raise HTTPException(
@@ -287,14 +301,15 @@ class ModuleService:
         )
         
         self.db.add(new_video)
-        self.db.commit()
-        self.db.refresh(new_video)
+        await self.db.commit()
+        await self.db.refresh(new_video)
         
-        return VideoSchema.model_validate(new_video)
+        return new_video
     
-    def update_video(self, video_id: str, video_data: VideoUpdateSchema) -> VideoSchema:
+    async def update_video(self, video_id: str, video_data: VideoUpdateSchema) -> VideoSchema:
         """Update video information"""
-        video = self.db.exec(select(Video).where(Video.id == video_id)).first()
+        videos = await self.db.exec(select(Video).where(Video.id == video_id))
+        video = videos.first()
         
         if not video:
             raise HTTPException(
@@ -319,14 +334,15 @@ class ModuleService:
             video.subtitles_url = video_data.subtitles_url
         
         self.db.add(video)
-        self.db.commit()
-        self.db.refresh(video)
+        await self.db.commit()
+        await self.db.refresh(video)
         
-        return VideoSchema.model_validate(video)
+        return video
     
-    def get_module_videos(self, module_id: str) -> List[VideoSchema]:
+    async def get_module_videos(self, module_id: str) -> List[VideoSchema]:
         """Get all videos for a module"""
-        module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == module_id))
+        module = modules.first()
         
         if not module:
             raise HTTPException(
@@ -334,13 +350,15 @@ class ModuleService:
                 detail="Module not found"
             )
         
-        videos = self.db.exec(select(Video).where(Video.module_id == module_id)).all()
+        video = await self.db.exec(select(Video).where(Video.module_id == module_id))
+        videos = video.all()
         
-        return [VideoSchema.model_validate(video) for video in videos]
+        return videos
     
-    def delete_video(self, video_id: str) -> Dict[str, str]:
+    async def delete_video(self, video_id: str) -> Dict[str, str]:
         """Delete a video"""
-        video = self.db.exec(select(Video).where(Video.id == video_id)).first()
+        videos = await self.db.exec(select(Video).where(Video.id == video_id))
+        video = videos.first()
         
         if not video:
             raise HTTPException(
@@ -349,7 +367,7 @@ class ModuleService:
             )
         
         self.db.delete(video)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Video deleted successfully"}
     
@@ -394,9 +412,10 @@ class ModuleService:
             file_type=file_extension[1:]  # Remove the dot
         )
     
-    def reorder_modules(self, course_id: str, module_orders: List[Dict[str, int]]) -> Dict[str, str]:
+    async def reorder_modules(self, course_id: str, module_orders: List[Dict[str, int]]) -> Dict[str, str]:
         """Reorder modules in a course"""
-        course = self.db.exec(select(Course).where(Course.id == course_id)).first()
+        courses = await self.db.exec(select(Course).where(Course.id == course_id))
+        course = courses.first()
         
         if not course:
             raise HTTPException(
@@ -409,12 +428,13 @@ class ModuleService:
             module_id = order_data.get("module_id")
             new_order = order_data.get("order_index")
             
-            module = self.db.exec(select(Module).where(Module.id == module_id)).first()
+            modules = await self.db.exec(select(Module).where(Module.id == module_id))
+            module = modules.first()
             if module and module.course_id == course_id:
                 module.order_index = new_order
                 self.db.add(module)
         
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Modules reordered successfully"}
 

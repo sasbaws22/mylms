@@ -33,8 +33,8 @@ async def create_content_review(
     """Create a new content review request"""
     db_review = ContentReview.model_validate(review)
     session.add(db_review)
-    session.commit()
-    session.refresh(db_review)
+    await session.commit()
+    await session.refresh(db_review)
     return db_review
 
 @reviews_router.get(
@@ -71,7 +71,7 @@ async def get_content_reviews(
     # Apply pagination
     query = query.offset(skip).limit(limit)
     
-    reviews = session.exec(query).all()
+    reviews = await session.exec(query).all()
     return reviews
 
 @reviews_router.get(
@@ -84,9 +84,10 @@ async def get_my_submitted_reviews(
     current_user: User = Depends(get_current_user)
 ):
     """Get all reviews for content submitted by the current user"""
-    reviews = session.exec(
+    review = await session.exec(
         select(ContentReview).where(ContentReview.submitter_id == current_user.id)
-    ).all()
+    )
+    reviews= review.all()
     return reviews
 
 @reviews_router.get(
@@ -99,9 +100,10 @@ async def get_my_assigned_reviews(
     current_user: User = Depends(get_current_user)
 ):
     """Get all reviews assigned to the current user"""
-    reviews = session.exec(
+    reviews = await session.exec(
         select(ContentReview).where(ContentReview.reviewer_id == current_user.id)
-    ).all()
+    ) 
+    reviews = reviews.all()
     return reviews
 
 @reviews_router.get(
@@ -115,7 +117,7 @@ async def get_content_review_by_id(
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific content review by ID"""
-    review = session.get(ContentReview, review_id)
+    review = await session.get(ContentReview, review_id)
     if not review:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     return review
@@ -132,7 +134,7 @@ async def update_content_review(
     current_user: User = Depends(get_current_user)
 ):
     """Update a content review (typically by the assigned reviewer)"""
-    review = session.get(ContentReview, review_id)
+    review = await session.get(ContentReview, review_id)
     if not review:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     
@@ -149,8 +151,8 @@ async def update_content_review(
         review.reviewed_at = datetime.utcnow()
     
     session.add(review)
-    session.commit()
-    session.refresh(review)
+    await session.commit()
+    await session.refresh(review)
     return review
 
 @reviews_router.put(
@@ -165,7 +167,7 @@ async def assign_review(
     current_user: User = Depends(get_current_user)
 ):
     """Assign a review to a specific reviewer"""
-    review = session.get(ContentReview, review_id)
+    review = await session.get(ContentReview, review_id)
     if not review:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     
@@ -173,8 +175,8 @@ async def assign_review(
     
     review.reviewer_id = UUID(assignment.reviewer_id)
     session.add(review)
-    session.commit()
-    session.refresh(review)
+    await session.commit()
+    await session.refresh(review)
     return review
 
 @reviews_router.delete(
@@ -188,7 +190,7 @@ async def delete_content_review(
     current_user: User = Depends(get_current_user)
 ):
     """Delete a content review"""
-    review = session.get(ContentReview, review_id)
+    review = await session.get(ContentReview, review_id)
     if not review:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     
@@ -198,7 +200,7 @@ async def delete_content_review(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this review")
     
     session.delete(review)
-    session.commit()
+    await session.commit()
     return
 
 # Content Version Routes
@@ -217,8 +219,8 @@ async def create_content_version(
     """Create a new content version"""
     db_version = ContentVersion.model_validate(version)
     session.add(db_version)
-    session.commit()
-    session.refresh(db_version)
+    await session.commit()
+    await session.refresh(db_version)
     return db_version
 
 @reviews_router.get(
@@ -233,12 +235,14 @@ async def get_content_versions(
     current_user: User = Depends(get_current_user)
 ):
     """Get all versions for a specific content"""
-    versions = session.exec(
+    version = await session.exec(
         select(ContentVersion)
         .where(ContentVersion.content_id == content_id)
         .where(ContentVersion.content_type == content_type)
         .order_by(ContentVersion.version_number.desc())
-    ).all()
+    )
+
+    versions = version.all()
     return versions
 
 # Statistics and Bulk Operations
@@ -254,17 +258,18 @@ async def get_review_stats(
 ):
     """Get review statistics overview"""
     # Get basic counts
-    total_reviews = session.exec(select(ContentReview)).count()
-    pending_reviews = session.exec(select(ContentReview).where(ContentReview.status == ReviewStatus.PENDING)).count()
-    approved_reviews = session.exec(select(ContentReview).where(ContentReview.status == ReviewStatus.APPROVED)).count()
-    rejected_reviews = session.exec(select(ContentReview).where(ContentReview.status == ReviewStatus.REJECTED)).count()
+    total_reviews = await session.exec(select(ContentReview)).count()
+    pending_reviews = await session.exec(select(ContentReview).where(ContentReview.status == ReviewStatus.PENDING)).count()
+    approved_reviews = await session.exec(select(ContentReview).where(ContentReview.status == ReviewStatus.APPROVED)).count()
+    rejected_reviews = await session.exec(select(ContentReview).where(ContentReview.status == ReviewStatus.REJECTED)).count()
     
     # Get recent reviews
-    recent_reviews = session.exec(
+    recent_review = await session.exec(
         select(ContentReview)
         .order_by(ContentReview.created_at.desc())
         .limit(10)
-    ).all()
+    )
+    recent_reviews = recent_review.all()
     
     # Get reviews by type and status (simplified)
     reviews_by_type = [
@@ -301,9 +306,10 @@ async def bulk_review_action(
 ):
     """Perform bulk actions on multiple reviews"""
     # Get all reviews by IDs
-    reviews = session.exec(
+    review = await session.exec(
         select(ContentReview).where(ContentReview.id.in_([UUID(rid) for rid in bulk_action.review_ids]))
-    ).all()
+    )
+    reviews = review.all()
     
     if not reviews:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No reviews found")
@@ -328,7 +334,7 @@ async def bulk_review_action(
     
     # Refresh all updated reviews
     for review in updated_reviews:
-        session.refresh(review)
+        await session.refresh(review)
     
     return updated_reviews
 

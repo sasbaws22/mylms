@@ -86,8 +86,8 @@ class UserService:
     
     async def get_user_by_id(self, user_id: str) -> UserDetailSchema:
         """Get user by ID with detailed information"""
-        result5 = self.db.exec(select(User).where(User.id == user_id))
-        user = result5
+        result5 = await self.db.exec(select(User).where(User.id == user_id))
+        user = result5.first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -95,12 +95,17 @@ class UserService:
             )
         
         # Calculate user statistics
-        total_enrollments = self.db.exec(select(func.count(Enrollment.id)).where(Enrollment.user_id == user.id)).first() or 0
-        completed_courses = self.db.exec(select(func.count(Enrollment.id)).where(Enrollment.user_id == user.id, Enrollment.status == "completed")).first() or 0
+        total = await self.db.exec(select(func.count(Enrollment.id)).where(Enrollment.user_id == user.id)) 
+        total_enrollments = total.first() or 0
+        completed = await self.db.exec(select(func.count(Enrollment.id)).where(Enrollment.user_id == user.id, Enrollment.status == "completed")) 
+        completed_courses = completed.first() or 0
         # Assuming total_points are calculated from quiz attempts or other activities
-        total_points = self.db.exec(select(func.sum(QuizAttempt.score)).where(QuizAttempt.user_id == user.id)).first() or 0
-        total_certificates = self.db.exec(select(func.count(Certificate.id)).where(Certificate.user_id == user.id)).first() or 0
-        total_badges = self.db.exec(select(func.count(UserBadge.id)).where(UserBadge.user_id == user.id)).first() or 0
+        total_p = await self.db.exec(select(func.sum(QuizAttempt.score)).where(QuizAttempt.user_id == user.id))
+        total_points = total_p.first() or 0
+        total_cert = await self.db.exec(select(func.count(Certificate.id)).where(Certificate.user_id == user.id))
+        total_certificates = total_cert.first() or 0
+        total_b = await self.db.exec(select(func.count(UserBadge.id)).where(UserBadge.user_id == user.id))
+        total_badges = total_b.first() or 0
         
         return UserDetailSchema(
             id=user.id,
@@ -121,15 +126,15 @@ class UserService:
             updated_at=user.updated_at
         )
     
-    def create_user(self, user_data: UserCreateSchema) -> UserDetailSchema:
+    async def create_user(self, user_data: UserCreateSchema) -> UserDetailSchema:
         """Create a new user (admin function)"""
         # Check if user already exists
-        existing_user = self.db.exec(
+        existing_users = await self.db.exec(
             select(User).where(
-                (User.email == user_data.email) | (User.username == user_data.username)
+                User.email == user_data.email
             )
-        ).first()
-        
+        )
+        existing_user   =   existing_users.first()
         if existing_user:
             if existing_user.email == user_data.email:
                 raise HTTPException(
@@ -142,7 +147,7 @@ class UserService:
                     detail="Username already taken"
                 )
         
-        # Generate password if not provided
+         # Generate password if not provided
         password = user_data.password 
         
         # Create new user
@@ -152,20 +157,20 @@ class UserService:
             password_hash=get_password_hash(password),
             first_name=user_data.first_name,
             last_name=user_data.last_name,
-            phone=user_data.phone_number, # Corrected to use 'phone' attribute
+            phone=user_data.phone_number,
             is_active=user_data.is_active
         )
         
         self.db.add(new_user)
-        self.db.commit()
-        self.db.refresh(new_user)
+        await self.db.commit()
+        await self.db.refresh(new_user)
         
-        return self.get_user_by_id(str(new_user.id))
+        return await self.get_user_by_id(str(new_user.id))
     
-    def update_user(self, user_id: str, user_data: UserUpdateSchema) -> UserDetailSchema:
+    async def update_user(self, user_id: str, user_data: UserUpdateSchema) -> UserDetailSchema:
         """Update user information"""
-        user = self.db.exec(select(User).where(User.id == user_id)).first()
-        
+        users = await self.db.exec(select(User).where(User.id == user_id))
+        user = users.first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -178,17 +183,15 @@ class UserService:
         if user_data.last_name is not None:
             user.last_name = user_data.last_name
         if user_data.phone_number is not None:
-            user.phone = user_data.phone_number # Corrected to use 'phone' attribute
-        if user_data.bio is not None:
-            user.bio = user_data.bio
+            user.phone = user_data.phone_number 
         if user_data.avatar_url is not None:
             user.avatar_url = user_data.avatar_url
         
         self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
+        await self.db.commit()
+        await self.db.refresh(user)
         
-        return self.get_user_by_id(str(user.id))
+        return await self.get_user_by_id(str(user.id))
     
     def deactivate_user(self, user_id: str) -> Dict[str, str]:
         """Deactivate user account"""

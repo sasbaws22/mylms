@@ -27,8 +27,8 @@ async def create_notification(
     # Add proper authorization check if only admins can create notifications
     db_notification = Notification.model_validate(notification)
     session.add(db_notification)
-    session.commit()
-    session.refresh(db_notification)
+    await session.commit()
+    await session.refresh(db_notification)
     return db_notification
 
 @notifications_router.get(
@@ -40,7 +40,8 @@ async def get_user_notifications(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    notifications = session.query(Notification).filter(Notification.user_id == current_user.id).all()
+    notification = await session.query(Notification).filter(Notification.user_id == current_user.id)
+    notifications= notification.all()
     return notifications
 
 @notifications_router.get(
@@ -53,7 +54,8 @@ async def get_notification_by_id(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    notification = session.query(Notification).filter(Notification.id == notification_id, Notification.user_id == current_user.id).first()
+    notifications = await session.query(Notification).filter(Notification.id == notification_id, Notification.user_id == current_user.id)
+    notification = notifications.first()
     if not notification:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
     return notification

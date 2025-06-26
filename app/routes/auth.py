@@ -97,8 +97,9 @@ async def get_current_user_profile(
     db: Session = Depends(get_session)
 ):
     """Get current user profile"""
-    auth_service = AuthService(db)
-    return await auth_service.get_current_user_profile(current_user.username)
+    auth_service = AuthService(db) 
+    id = current_user.get("sub")
+    return await auth_service.get_current_user_profile(id)
 
 
 @router.post("/verify-email", response_model=MessageResponse)
@@ -119,8 +120,9 @@ async def get_me(
     db: Session = Depends(get_session)
 ):
     """Get current user information (alias for /profile)"""
-    auth_service = AuthService(db)
-    return await auth_service.get_current_user_profile(current_user.username)
+    auth_service = AuthService(db) 
+    id = current_user.get("sub")
+    return await auth_service.get_current_user_profile(id)
 
 
 # Create router instance for export

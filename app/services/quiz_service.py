@@ -24,7 +24,7 @@ class QuizService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_quizzes(self, page: int = 1, limit: int = 20, search: Optional[str] = None, module_id: Optional[str] = None) -> PaginatedResponse[QuizSummarySchema]:
+    async def get_quizzes(self, page: int = 1, limit: int = 20, search: Optional[str] = None, module_id: Optional[str] = None) -> PaginatedResponse[QuizSummarySchema]:
         """Get paginated list of quizzes"""
         query = select(Quiz)
         
@@ -48,10 +48,12 @@ class QuizService:
                 (Quiz.description.ilike(search_term))
             )
         
-        total = self.db.exec(total_query).first()
+        total = await self.db.exec(total_query)
+        total = total.first()
         
         offset = (page - 1) * limit
-        quizzes = self.db.exec(query.offset(offset).limit(limit)).all()
+        quizz = await self.db.exec(query.offset(offset).limit(limit))
+        quizzes = quizz.all()
         
         quiz_schemas = []
         for quiz in quizzes:
@@ -74,9 +76,10 @@ class QuizService:
         
         return PaginatedResponse.create(quiz_schemas, total, page, limit)
     
-    def get_quiz_by_id(self, quiz_id: str, user_id: Optional[str] = None) -> QuizDetailSchema:
+    async def get_quiz_by_id(self, quiz_id: str, user_id: Optional[str] = None) -> QuizDetailSchema:
         """Get quiz by ID with detailed information"""
-        quiz = self.db.exec(select(Quiz).where(Quiz.id == quiz_id)).first()
+        quizzes = await self.db.exec(select(Quiz).where(Quiz.id == quiz_id))
+        quiz = quizzes.first()
         
         if not quiz:
             raise HTTPException(
@@ -85,7 +88,8 @@ class QuizService:
             )
         
         # Get module information
-        module = self.db.exec(select(Module).where(Module.id == quiz.module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == quiz.module_id))
+        module = modules.first()
         
         # Get questions with options
         questions = []
@@ -121,11 +125,12 @@ class QuizService:
         can_attempt = True
         
         if user_id:
-            attempts = self.db.exec(
+            attempt = await self.db.exec(
                 select(QuizAttempt).where(
                     (QuizAttempt.quiz_id == quiz_id) & (QuizAttempt.user_id == user_id)
                 )
-            ).all()
+            )
+            attempts = attempt.all()
             
             user_attempts = len(attempts)
             completed_attempts = [a for a in attempts if a.completed_at is not None]
@@ -155,10 +160,11 @@ class QuizService:
             updated_at=quiz.updated_at
         )
     
-    def create_quiz(self, quiz_data: QuizCreateSchema) -> QuizDetailSchema:
+    async def create_quiz(self, quiz_data: QuizCreateSchema) -> QuizDetailSchema:
         """Create a new quiz"""
         # Verify module exists
-        module = self.db.exec(select(Module).where(Module.id == quiz_data.module_id)).first()
+        modules = await self.db.exec(select(Module).where(Module.id == quiz_data.module_id))
+        module = modules.first()
         if not module:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -179,18 +185,19 @@ class QuizService:
         )
         
         self.db.add(new_quiz)
-        self.db.commit()
-        self.db.refresh(new_quiz)
+        await self.db.commit()
+        await self.db.refresh(new_quiz)
         
         # Add questions if provided
         for i, question_data in enumerate(quiz_data.questions):
             self._create_question(new_quiz.id, question_data, i)
         
-        return self.get_quiz_by_id(new_quiz.id)
+        return await self.get_quiz_by_id(new_quiz.id)
     
-    def update_quiz(self, quiz_id: str, quiz_data: QuizUpdateSchema) -> QuizDetailSchema:
+    async def update_quiz(self, quiz_id: str, quiz_data: QuizUpdateSchema) -> QuizDetailSchema:
         """Update quiz information"""
-        quiz = self.db.exec(select(Quiz).where(Quiz.id == quiz_id)).first()
+        quizzes = await self.db.exec(select(Quiz).where(Quiz.id == quiz_id))
+        quiz = quizzes.first()
         
         if not quiz:
             raise HTTPException(
@@ -217,14 +224,15 @@ class QuizService:
             quiz.allow_review = quiz_data.allow_review
         
         self.db.add(quiz)
-        self.db.commit()
-        self.db.refresh(quiz)
+        await self.db.commit()
+        await self.db.refresh(quiz)
         
-        return self.get_quiz_by_id(quiz.id)
+        return await self.get_quiz_by_id(quiz.id)
     
-    def delete_quiz(self, quiz_id: str) -> Dict[str, str]:
+    async def delete_quiz(self, quiz_id: str) -> Dict[str, str]:
         """Delete a quiz"""
-        quiz = self.db.exec(select(Quiz).where(Quiz.id == quiz_id)).first()
+        quizzes = await self.db.exec(select(Quiz).where(Quiz.id == quiz_id))
+        quiz = quizzes.first()
         
         if not quiz:
             raise HTTPException(
@@ -233,7 +241,8 @@ class QuizService:
             )
         
         # Check if quiz has attempts
-        attempts = self.db.exec(select(QuizAttempt).where(QuizAttempt.quiz_id == quiz_id)).all()
+        attempt = await self.db.exec(select(QuizAttempt).where(QuizAttempt.quiz_id == quiz_id))
+        attempts = attempt.all()
         if attempts:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -241,11 +250,11 @@ class QuizService:
             )
         
         self.db.delete(quiz)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Quiz deleted successfully"}
     
-    def _create_question(self, quiz_id: str, question_data: QuestionCreateSchema, order_index: int) -> Question: 
+    async def _create_question(self, quiz_id: str, question_data: QuestionCreateSchema, order_index: int) -> Question: 
         """Helper to create a question and its options"""
         new_question = Question(
             quiz_id=quiz_id,
@@ -269,9 +278,10 @@ class QuizService:
         
         return new_question
 
-    def add_question_to_quiz(self, quiz_id: str, question_data: QuestionCreateSchema) -> QuestionSchema:
+    async def add_question_to_quiz(self, quiz_id: str, question_data: QuestionCreateSchema) -> QuestionSchema:
         """Add a question to a quiz"""
-        quiz = self.db.exec(select(Quiz).where(Quiz.id == quiz_id)).first()
+        quizzes = await self.db.exec(select(Quiz).where(Quiz.id == quiz_id))
+        quiz = quizzes.first()
         if not quiz:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -279,20 +289,22 @@ class QuizService:
             )
         
         # Determine the next order index
-        max_order = self.db.exec(
+        max_orders = await self.db.exec(
             select(func.max(Question.order_index)).where(Question.quiz_id == quiz_id)
-        ).first()
+        )
+        max_order = max_orders.first()
         order_index = (max_order or 0) + 1
         
-        new_question = self._create_question(quiz_id, question_data, order_index)
-        self.db.commit()
-        self.db.refresh(new_question)
+        new_question = await self._create_question(quiz_id, question_data, order_index)
+        await self.db.commit()
+        await self.db.refresh(new_question)
         
         return QuestionSchema.model_validate(new_question)
 
-    def update_question(self, question_id: str, question_data: QuestionUpdateSchema) -> QuestionSchema:
+    async def update_question(self, question_id: str, question_data: QuestionUpdateSchema) -> QuestionSchema:
         """Update question information"""
-        question = self.db.exec(select(Question).where(Question.id == question_id)).first()
+        questions = await self.db.exec(select(Question).where(Question.id == question_id))
+        question = questions.first()
         if not question:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -311,14 +323,15 @@ class QuizService:
             question.explanation = question_data.explanation
         
         self.db.add(question)
-        self.db.commit()
-        self.db.refresh(question)
+        await self.db.commit()
+        await self.db.refresh(question)
         
         return QuestionSchema.model_validate(question)
 
-    def delete_question(self, question_id: str) -> Dict[str, str]:
+    async def delete_question(self, question_id: str) -> Dict[str, str]:
         """Delete a question"""
-        question = self.db.exec(select(Question).where(Question.id == question_id)).first()
+        questions = await self.db.exec(select(Question).where(Question.id == question_id))
+        question = questions.first()
         if not question:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -326,13 +339,14 @@ class QuizService:
             )
         
         self.db.delete(question)
-        self.db.commit()
+        await self.db.commit()
         
         return {"message": "Question deleted successfully"}
 
-    def submit_quiz_attempt(self, quiz_id: str, user_id: str, attempt_data: QuizAttemptStartSchema) -> QuizDetailSchema:
+    async def submit_quiz_attempt(self, quiz_id: str, user_id: str, attempt_data: QuizAttemptStartSchema) -> QuizDetailSchema:
         """Submit a quiz attempt"""
-        quiz = self.db.exec(select(Quiz).where(Quiz.id == quiz_id)).first()
+        quizzes = await self.db.exec(select(Quiz).where(Quiz.id == quiz_id))
+        quiz = quizzes.first()
         if not quiz:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -340,11 +354,12 @@ class QuizService:
             )
 
         # Check if user can attempt
-        user_attempts_count = self.db.exec(
+        user_attempts_counts = await self.db.exec(
             select(func.count(QuizAttempt.id)).where(
                 (QuizAttempt.quiz_id == quiz_id) & (QuizAttempt.user_id == user_id)
             )
-        ).first()
+        )
+        user_attempts_count = user_attempts_counts.first()
         
         if user_attempts_count >= quiz.max_attempts:
             raise HTTPException(
@@ -364,16 +379,18 @@ class QuizService:
 
         earned_points = 0
         for response_data in attempt_data.responses:
-            question = self.db.exec(select(Question).where(Question.id == response_data.question_id)).first()
+            questions = await self.db.exec(select(Question).where(Question.id == response_data.question_id))
+            question = questions.first()
             if not question:
                 continue
 
             is_correct = False
             if question.question_type in [QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE]:
                 if response_data.selected_option_id:
-                    selected_option = self.db.exec(
+                    selected_options = await self.db.exec(
                         select(QuestionOption).where(QuestionOption.id == response_data.selected_option_id)
-                    ).first()
+                    )
+                    selected_option = selected_options.first()
                     if selected_option and selected_option.is_correct:
                         is_correct = True
                         earned_points += question.points
@@ -400,12 +417,12 @@ class QuizService:
         new_attempt.time_spent = int((new_attempt.completed_at - new_attempt.started_at).total_seconds())
 
         self.db.add(new_attempt)
-        self.db.commit()
-        self.db.refresh(new_attempt)
+        await self.db.commit()
+        await self.db.refresh(new_attempt)
 
-        return self.get_quiz_attempt_by_id(new_attempt.id)
+        return await self.get_quiz_attempt_by_id(new_attempt.id)
 
-    def get_quiz_attempts(self, quiz_id: str, page: int = 1, limit: int = 20, user_id: Optional[str] = None) -> PaginatedResponse[QuizAttemptSchema]:
+    async def get_quiz_attempts(self, quiz_id: str, page: int = 1, limit: int = 20, user_id: Optional[str] = None) -> PaginatedResponse[QuizAttemptSchema]:
         """Get paginated list of quiz attempts for a quiz"""
         query = select(QuizAttempt).where(QuizAttempt.quiz_id == quiz_id)
         if user_id:
@@ -418,12 +435,15 @@ class QuizService:
         total = self.db.exec(total_query).first()
         
         offset = (page - 1) * limit
-        attempts = self.db.exec(query.offset(offset).limit(limit)).all()
+        attemptss = await self.db.exec(query.offset(offset).limit(limit))
+        attempts = attemptss.all()
         
         attempt_schemas = []
         for attempt in attempts:
-            user = self.db.exec(select(User).where(User.id == attempt.user_id)).first()
-            quiz = self.db.exec(select(Quiz).where(Quiz.id == attempt.quiz_id)).first()
+            userss = await self.db.exec(select(User).where(User.id == attempt.user_id))
+            user = userss.first()
+            quizzes = await self.db.exec(select(Quiz).where(Quiz.id == attempt.quiz_id))
+            quiz = quizzes.first()
             attempt_schemas.append(QuizAttemptSchema(
                 id=attempt.id,
                 quiz_id=attempt.quiz_id,
@@ -440,24 +460,29 @@ class QuizService:
         
         return PaginatedResponse.create(attempt_schemas, total, page, limit)
 
-    def get_quiz_attempt_by_id(self, attempt_id: str) -> QuizDetailSchema:
+    async def get_quiz_attempt_by_id(self, attempt_id: str) -> QuizDetailSchema:
         """Get quiz attempt by ID with detailed information"""
-        attempt = self.db.exec(select(QuizAttempt).where(QuizAttempt.id == attempt_id)).first()
+        attempts = await self.db.exec(select(QuizAttempt).where(QuizAttempt.id == attempt_id))
+        attempt = attempts.first()
         if not attempt:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Quiz attempt not found"
             )
         
-        quiz = self.db.exec(select(Quiz).where(Quiz.id == attempt.quiz_id)).first()
-        user = self.db.exec(select(User).where(User.id == attempt.user_id)).first()
+        quizz = await self.db.exec(select(Quiz).where(Quiz.id == attempt.quiz_id))
+        quiz = quizz.first()
+        userss = await self.db.exec(select(User).where(User.id == attempt.user_id))
+        user = userss.first()
         
         responses = []
         for response in attempt.responses:
-            question = self.db.exec(select(Question).where(Question.id == response.question_id)).first()
+            questionss = await self.db.exec(select(Question).where(Question.id == response.question_id))
+            question = questionss.first()
             selected_option = None
             if response.selected_option_id:
-                selected_option = self.db.exec(select(QuestionOption).where(QuestionOption.id == response.selected_option_id)).first()
+                selected_options = await self.db.exec(select(QuestionOption).where(QuestionOption.id == response.selected_option_id))
+                selected_option = selected_options.first()
             
             responses.append({
                 "question_id": response.question_id,

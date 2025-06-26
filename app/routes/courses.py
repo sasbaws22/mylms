@@ -48,7 +48,7 @@ async def get_courses(
         sort_by=sort_by,
         sort_order=sort_order
     )
-    return course_service.get_courses(params, page, limit)
+    return await course_service.get_courses(params, page, limit)
 
 
 @router.post("/", response_model=CourseDetailSchema, status_code=status.HTTP_201_CREATED)
@@ -59,7 +59,8 @@ async def create_course(
 ):
     """Create a new course"""
     course_service = CourseService(db)
-    return course_service.create_course(course_data, current_user.username)
+    id = current_user.get("sub")
+    return await course_service.create_course(course_data, id)
 
 
 @router.get("/stats", response_model=CourseStatsSchema)
@@ -69,7 +70,7 @@ async def get_course_stats(
 ):
     """Get course statistics"""
     course_service = CourseService(db)
-    return course_service.get_course_stats()
+    return await course_service.get_course_stats()
 
 
 @router.get("/my-courses", response_model=PaginatedCoursesResponse)
@@ -80,9 +81,10 @@ async def get_my_courses(
     db: Session = Depends(get_session)
 ):
     """Get courses created by current user"""
-    course_service = CourseService(db)
-    params = CourseListParams(creator_id=current_user.username)
-    return course_service.get_courses(params, page, limit)
+    course_service = CourseService(db) 
+    id = current_user.get("sub")
+    params = CourseListParams(creator_id=id)
+    return await course_service.get_courses(params, page, limit)
 
 
 @router.get("/{course_id}", response_model=CourseDetailSchema)
@@ -92,8 +94,9 @@ async def get_course_by_id(
     db: Session = Depends(get_session)
 ):
     """Get course by ID"""
-    course_service = CourseService(db)
-    return course_service.get_course_by_id(course_id, current_user.username)
+    course_service = CourseService(db) 
+    id = current_user.get("sub")
+    return await course_service.get_course_by_id(course_id, id)
 
 
 @router.put("/{course_id}", response_model=CourseDetailSchema)
@@ -105,7 +108,7 @@ async def update_course(
 ):
     """Update course information"""
     course_service = CourseService(db)
-    return course_service.update_course(course_id, course_data)
+    return await course_service.update_course(course_id, course_data)
 
 
 @router.post("/{course_id}/publish", response_model=CourseDetailSchema)
