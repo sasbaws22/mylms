@@ -3,14 +3,12 @@ Application Configuration
 """
 import os
 from typing import Optional, List
-from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
+from pydantic_settings import BaseSettings,SettingsConfigDict
+
 
 
 class Settings(BaseSettings):
     """Application settings"""
-    
-    model_config = ConfigDict(extra='ignore')
     
     # Application
     APP_NAME: str = "LMS Backend API"
@@ -24,11 +22,6 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str 
-    DB_HOST: str 
-    DB_PORT: int
-    DB_USER: str 
-    DB_PASSWORD: str 
-    DB_NAME: str 
     SECRET_KEY: str 
     ALGORITHM: str
     # CORS
@@ -43,10 +36,6 @@ class Settings(BaseSettings):
     ELASTICMAIL_FROM_NAME: str
     ELASTICMAIL_API_KEY: str    
     
-    
-    # Redis (for caching and sessions)
-    REDIS_URL: Optional[str] = None
-    
     # Logging
     LOG_LEVEL: str = "INFO" 
     
@@ -57,14 +46,15 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # Construct PostgreSQL URL if individual components are provided
-        if (self.DB_HOST and self.DB_USER and self.DB_PASSWORD and self.DB_NAME 
-            and not self.DATABASE_URL.startswith("postgresql")):
-            self.DATABASE_URL = f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         
         # Create upload directory if it doesn't exist
         os.makedirs(self.UPLOAD_DIR, exist_ok=True)
-
+    
+    model_config = SettingsConfigDict(
+        
+        env_file =".env",  
+        extra ="ignore"    
+    )
 
 # Create settings instance
 settings = Settings()
