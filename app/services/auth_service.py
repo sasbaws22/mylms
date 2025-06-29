@@ -1,10 +1,11 @@
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlmodel import Session, select
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status,Request
 import secrets
 import string 
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload 
+from app.utils.audit import audit_service
 
 from app.core.security import (
     verify_password, get_password_hash, create_access_token, 
@@ -63,7 +64,7 @@ class AuthService:
         
         return new_user
     
-    async def login_user(self, login_data: LoginSchema) -> TokenResponseSchema:
+    async def login_user(self,request: Request, login_data: LoginSchema) -> TokenResponseSchema:
         """Authenticate user and return tokens"""
         # Find user by email
        # Get user by email
@@ -80,7 +81,7 @@ class AuthService:
            raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account is deactivated"
-        )
+        ) 
         
         # Update last login
         user.last_login = datetime.now()
@@ -99,11 +100,18 @@ class AuthService:
             "role": user.role,
             "is_active": user.is_active,
             "is_verified": user.is_verified
-        }
+        } 
+
         
         # Generate tokens
         access_token = create_access_token(token_data)
-        refresh_token = create_refresh_token({"sub":str( user.id)})
+        refresh_token = create_refresh_token({"sub":str( user.id)}) 
+
+        await  audit_service.log_login(
+        db= self.db,
+        user_id= user.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": user.email})
         
         return TokenResponseSchema(
             access_token=access_token,
@@ -143,7 +151,9 @@ class AuthService:
         
         # Generate new tokens
         new_access_token = create_access_token(token_data)
-        new_refresh_token = create_refresh_token({"sub": str( user.id)})
+        new_refresh_token = create_refresh_token({"sub": str( user.id)}) 
+
+        
         
         return TokenResponseSchema(
             access_token=new_access_token,

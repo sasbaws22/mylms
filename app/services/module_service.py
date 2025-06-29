@@ -3,7 +3,7 @@ Module service for content management operations
 """
 from typing import Optional, List, Dict, Any
 from sqlmodel import Session, select, func
-from fastapi import HTTPException, status, UploadFile
+from fastapi import HTTPException, status, UploadFile,Depends,Request
 from datetime import datetime
 import os
 import uuid
@@ -16,7 +16,10 @@ from app.schemas.module import (
     VideoSchema, VideoProgressUpdateSchema, FileUploadResponseSchema
 )
 from app.schemas.base import PaginatedResponse
-from app.core.config import settings
+from app.core.config import settings 
+from app.core.security import access_token_bearer 
+from app.schemas.auth import TokenData 
+from app.utils.audit import audit_service
 
 
 class ModuleService:
@@ -125,7 +128,7 @@ class ModuleService:
             updated_at=module.updated_at
         )
     
-    async def create_module(self, course_id: str, module_data: ModuleCreateSchema) -> ModuleDetailSchema:
+    async def create_module(self, course_id: str,request:Request, module_data: ModuleCreateSchema,current_user:TokenData=Depends(access_token_bearer)) -> ModuleDetailSchema:
         """Create a new module"""
         # Verify course exists
         courses = await self.db.exec(select(Course).where(Course.id == course_id))
@@ -159,11 +162,20 @@ class ModuleService:
         
         self.db.add(new_module)
         await self.db.commit()
-        await self.db.refresh(new_module)
+        await self.db.refresh(new_module) 
+
+
+        await  audit_service.log_create(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= new_module.__tablename__,
+        entity_id=new_module.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return await self.get_module_by_id(new_module.id)
     
-    async def update_module(self, module_id: str, module_data: ModuleUpdateSchema) -> ModuleDetailSchema:
+    async def update_module(self, module_id: str,request:Request, module_data: ModuleUpdateSchema,current_user:TokenData=Depends(access_token_bearer)) -> ModuleDetailSchema:
         """Update module information"""
         modules = await self.db.exec(select(Module).where(Module.id == module_id))
         module = modules.first()
@@ -194,11 +206,20 @@ class ModuleService:
         
         self.db.add(module)
         await self.db.commit()
-        await self.db.refresh(module)
+        await self.db.refresh(module) 
+
+
+        await  audit_service.log_update(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= module.__tablename__,
+        entity_id=module.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return await self.get_module_by_id(module.id)
     
-    async def delete_module(self, module_id: str) -> Dict[str, str]:
+    async def delete_module(self, request:Request,module_id: str,current_user:TokenData=Depends(access_token_bearer)) -> Dict[str, str]:
         """Delete a module"""
         modules = await self.db.exec(select(Module).where(Module.id == module_id))
         module = modules.first()
@@ -210,7 +231,15 @@ class ModuleService:
             )
         
         self.db.delete(module)
-        await self.db.commit()
+        await self.db.commit() 
+
+        await  audit_service.log_delete(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= module.__tablename__,
+        entity_id=None,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return {"message": "Module deleted successfully"}
     

@@ -3,7 +3,7 @@ Course service for course management operations
 """
 from typing import Optional, List, Dict, Any
 from sqlmodel import Session, select, func
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status,Depends,Request
 from datetime import datetime
 
 from app.models.models.course import Course, Category, Enrollment, CourseStatus, EnrollmentStatus
@@ -16,7 +16,10 @@ from app.schemas.course import (
     EnrollmentListParams, BulkEnrollmentSchema
 )
 from app.schemas.base import PaginatedResponse
-from app.services.email_service import EmailService
+from app.services.email_service import EmailService 
+from app.core.security import access_token_bearer 
+from app.schemas.auth import TokenData 
+from app.utils.audit import audit_service
 
 
 class CourseService:
@@ -186,7 +189,7 @@ class CourseService:
             updated_at=course.updated_at
         )
     
-    async def create_course(self, course_data: CourseCreateSchema, creator_id: str) -> CourseDetailSchema:
+    async def create_course(self, course_data: CourseCreateSchema, request:Request,creator_id: str,current_user:TokenData=Depends(access_token_bearer)) -> CourseDetailSchema:
         """Create a new course"""
         # Validate category
         categor = await self.db.exec(select(Category).where(Category.id == course_data.category_id))
@@ -225,11 +228,19 @@ class CourseService:
         
         self.db.add(new_course)
         await self.db.commit()
-        await self.db.refresh(new_course)
+        await self.db.refresh(new_course) 
+
+        await  audit_service.log_create(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= new_course.__tablename__,
+        entity_id=new_course.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return await self.get_course_by_id(new_course.id)
     
-    async def update_course(self, course_id: str, course_data: CourseUpdateSchema) -> CourseDetailSchema:
+    async def update_course(self, course_id: str,request:Request, course_data: CourseUpdateSchema,current_user:TokenData=Depends(access_token_bearer)) -> CourseDetailSchema:
         """Update course information"""
         courses = await self.db.exec(select(Course).where(Course.id == course_id))
         course = courses.first()
@@ -279,7 +290,16 @@ class CourseService:
         
         self.db.add(course)
         await self.db.commit()
-        await self.db.refresh(course)
+        await self.db.refresh(course) 
+
+
+        await  audit_service.log_update(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= course.__tablename__,
+        entity_id=course.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return await self.get_course_by_id(course.id)
     
@@ -316,7 +336,7 @@ class CourseService:
         
         return await self.get_course_by_id(course.id)
     
-    async def delete_course(self, course_id: str) -> Dict[str, str]:
+    async def delete_course(self, request:Request,course_id: str,current_user:TokenData=Depends(access_token_bearer)) -> Dict[str, str]:
         """Delete a course"""
         courses = await self.db.exec(select(Course).where(Course.id == course_id))
         course = courses.first()
@@ -335,7 +355,15 @@ class CourseService:
             )
         
         self.db.delete(course)
-        await self.db.commit()
+        await self.db.commit() 
+
+        await  audit_service.log_delete(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= course.__tablename__,
+        entity_id= None,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return {"message": "Course deleted successfully"}
     

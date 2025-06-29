@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query,Request
 from sqlmodel import Session
 from typing import Optional, List
 from datetime import datetime
@@ -33,14 +33,15 @@ async def get_webinars(
 
 
 @router.post("/", response_model=WebinarSchema, status_code=status.HTTP_201_CREATED)
-async def create_webinar(
+async def create_webinar( 
+    request:Request,
     webinar_data: WebinarCreateSchema,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Create a new webinar"""
     webinar_service = WebinarService(db)
-    return await webinar_service.create_webinar(webinar_data)
+    return await webinar_service.create_webinar(webinar_data,request,current_user)
 
 
 @router.get("/{webinar_id}", response_model=WebinarSchema)
@@ -55,7 +56,8 @@ async def get_webinar_by_id(
 
 
 @router.put("/{webinar_id}", response_model=WebinarSchema)
-async def update_webinar(
+async def update_webinar( 
+    request:Request,
     webinar_id: str,
     webinar_data: WebinarUpdateSchema,
     current_user: TokenData = Depends(access_token_bearer),
@@ -63,18 +65,19 @@ async def update_webinar(
 ):
     """Update webinar information"""
     webinar_service = WebinarService(db)
-    return await webinar_service.update_webinar(webinar_id, webinar_data)
+    return await webinar_service.update_webinar(webinar_id, webinar_data,request,current_user)
 
 
 @router.delete("/{webinar_id}", response_model=MessageResponse)
-async def delete_webinar(
+async def delete_webinar( 
+    request:Request,
     webinar_id: str,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Delete a webinar"""
     webinar_service = WebinarService(db)
-    result =await  webinar_service.delete_webinar(webinar_id)
+    result =await  webinar_service.delete_webinar(webinar_id,request,current_user)
     return MessageResponse(message=result["message"])
 
 

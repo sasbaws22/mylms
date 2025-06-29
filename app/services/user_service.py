@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict, Any
 from sqlmodel import Session, select, func
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status,Request,Depends
 
 from app.models.models.user import User
 from app.schemas.user import (
@@ -14,6 +14,9 @@ from app.core.security import get_password_hash
 from app.models.models.course import Enrollment
 from app.models.models.quiz import QuizAttempt
 from app.models.models.certificate import Certificate,UserBadge 
+from app.core.security import access_token_bearer 
+from app.schemas.auth import TokenData 
+from app.utils.audit import audit_service
 
 
 
@@ -126,7 +129,7 @@ class UserService:
             updated_at=user.updated_at
         )
     
-    async def create_user(self, user_data: UserCreateSchema) -> UserDetailSchema:
+    async def create_user(self,request:Request, user_data: UserCreateSchema,current_user:TokenData=Depends(access_token_bearer)) -> UserDetailSchema:
         """Create a new user (admin function)"""
         # Check if user already exists
         existing_users = await self.db.exec(
@@ -163,11 +166,20 @@ class UserService:
         
         self.db.add(new_user)
         await self.db.commit()
-        await self.db.refresh(new_user)
+        await self.db.refresh(new_user) 
+
+        await  audit_service.log_create(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= new_user.__tablename__,
+        entity_id= new_user.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")} 
+        )
         
         return await self.get_user_by_id(str(new_user.id))
     
-    async def update_user(self, user_id: str, user_data: UserUpdateSchema) -> UserDetailSchema:
+    async def update_user(self, request:Request,user_id: str, user_data: UserUpdateSchema,current_user:TokenData=Depends(access_token_bearer)) -> UserDetailSchema:
         """Update user information"""
         users = await self.db.exec(select(User).where(User.id == user_id))
         user = users.first()
@@ -189,7 +201,16 @@ class UserService:
         
         self.db.add(user)
         await self.db.commit()
-        await self.db.refresh(user)
+        await self.db.refresh(user) 
+
+        await  audit_service.log_update(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= user.__tablename__,
+        entity_id= user.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")} 
+        )
         
         return await self.get_user_by_id(str(user.id))
     

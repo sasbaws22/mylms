@@ -1,7 +1,7 @@
 """
 Module and content management API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File ,Request
 from sqlmodel import Session
 from typing import Optional, List
 
@@ -33,7 +33,8 @@ async def get_modules_by_course(
 
 
 @router.post("/course/{course_id}", response_model=ModuleDetailSchema, status_code=status.HTTP_201_CREATED)
-async def create_module(
+async def create_module( 
+    request:Request,
     course_id: str,
     module_data: ModuleCreateSchema,
     current_user: TokenData = Depends(access_token_bearer),
@@ -41,7 +42,7 @@ async def create_module(
 ):
     """Create a new module in a course"""
     module_service = ModuleService(db)
-    return await  module_service.create_module(course_id, module_data)
+    return await  module_service.create_module(course_id, module_data,current_user,request)
 
 
 @router.get("/{module_id}", response_model=ModuleDetailSchema)
@@ -57,7 +58,8 @@ async def get_module_by_id(
 
 
 @router.put("/{module_id}", response_model=ModuleDetailSchema)
-async def update_module(
+async def update_module( 
+    request:Request,
     module_id: str,
     module_data: ModuleUpdateSchema,
     current_user: TokenData = Depends(access_token_bearer),
@@ -66,18 +68,19 @@ async def update_module(
     """Update module information"""
     module_service = ModuleService(db) 
 
-    return await module_service.update_module(module_id, module_data)
+    return await module_service.update_module(module_id, module_data,current_user,request)
 
 
 @router.delete("/{module_id}", response_model=MessageResponse)
-async def delete_module(
+async def delete_module( 
+    request:Request,
     module_id: str,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Delete a module"""
     module_service = ModuleService(db)
-    result = await  module_service.delete_module(module_id)
+    result = await  module_service.delete_module(module_id,request,current_user)
     return MessageResponse(message=result["message"])
 
 

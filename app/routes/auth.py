@@ -1,7 +1,7 @@
 """
 Authentication API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,Request
 from sqlmodel import Session
 
 from app.db.database import get_session
@@ -29,12 +29,15 @@ async def register_user(
 
 @router.post("/login", response_model=TokenResponseSchema)
 async def login_user(
-    login_data: LoginSchema,
+    login_data: LoginSchema, 
+    request:Request,
     db: Session = Depends(get_session)
 ):
     """User login with email and password"""
     auth_service = AuthService(db)
-    return await auth_service.login_user(login_data)
+     # Log successful login
+   
+    return await auth_service.login_user(login_data,request)
 
 
 @router.post("/refresh", response_model=TokenResponseSchema)
@@ -45,16 +48,6 @@ async def refresh_access_token(
     """Refresh access token using refresh token"""
     auth_service = AuthService(db)
     return await auth_service.refresh_token(refresh_data.refresh_token)
-
-
-@router.post("/logout", response_model=MessageResponse)
-async def logout_user(
-    current_user: TokenData = Depends(access_token_bearer)
-):
-    """Logout user and invalidate tokens"""
-    # In a real implementation, you would add the token to a blacklist
-    # For now, we'll just return a success message
-    return MessageResponse(message="Logged out successfully")
 
 
 @router.post("/forgot-password", response_model=MessageResponse)

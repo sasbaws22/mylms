@@ -1,7 +1,7 @@
 """
 User management API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query,Request
 from sqlmodel import Session
 from typing import Optional
 
@@ -42,13 +42,14 @@ async def get_users(
 
 @router.post("/", response_model=UserDetailSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(
+    request:Request,
     user_data: UserCreateSchema,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Create a new user (admin function)"""
     user_service = UserService(db)
-    return await user_service.create_user(user_data)
+    return await user_service.create_user(user_data,request,current_user)
 
 
 @router.get("/stats", response_model=UserStatsSchema)
@@ -98,7 +99,8 @@ async def get_user_by_id(
 
 
 @router.put("/{user_id}", response_model=UserDetailSchema)
-async def update_user(
+async def update_user( 
+    request:Request,
     user_id: str,
     user_data: UserUpdateSchema,
     current_user: TokenData = Depends(access_token_bearer),
@@ -106,11 +108,12 @@ async def update_user(
 ):
     """Update user information"""
     user_service = UserService(db)
-    return await user_service.update_user(user_id, user_data)
+    return await user_service.update_user(user_id, user_data,request,current_user)
 
 
 @router.delete("/{user_id}", response_model=MessageResponse)
-async def deactivate_user(
+async def deactivate_user( 
+    request:Request,
     user_id: str,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)

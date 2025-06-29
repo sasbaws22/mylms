@@ -3,7 +3,7 @@ Webinar service for managing online events
 """
 from typing import Optional, List, Dict, Any
 from sqlmodel import Session, select, func
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status,Depends,Request
 from datetime import datetime
 
 from app.models.models.webinar import Webinar, WebinarRegistration
@@ -12,7 +12,10 @@ from app.schemas.webinar import (
     WebinarCreateSchema, WebinarUpdateSchema, WebinarSchema,
     WebinarRegistrationSchema
 )
-from app.schemas.base import PaginatedResponse
+from app.schemas.base import PaginatedResponse 
+from app.core.security import access_token_bearer 
+from app.schemas.auth import TokenData 
+from app.utils.audit import audit_service
 
 
 class WebinarService:
@@ -58,7 +61,7 @@ class WebinarService:
         
         return PaginatedResponse.create(webinar_schemas, total, page, limit)
     
-    async def create_webinar(self, webinar_data: WebinarCreateSchema) -> WebinarSchema:
+    async def create_webinar(self,request:Request, webinar_data: WebinarCreateSchema,current_user:TokenData=Depends(access_token_bearer)) -> WebinarSchema:
         """Create a new webinar"""
         new_webinar = Webinar(
             title=webinar_data.title,
@@ -72,7 +75,16 @@ class WebinarService:
         
         self.db.add(new_webinar)
         await self.db.commit()
-        await self.db.refresh(new_webinar)
+        await self.db.refresh(new_webinar) 
+
+
+        await  audit_service.log_create(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= new_webinar.__tablename__, 
+        entity_id=new_webinar.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return WebinarSchema.model_validate(new_webinar)
     
@@ -89,7 +101,7 @@ class WebinarService:
         
         return WebinarSchema.model_validate(webinar)
     
-    async def update_webinar(self, webinar_id: str, webinar_data: WebinarUpdateSchema) -> WebinarSchema:
+    async def update_webinar(self, request:Request,webinar_id: str, webinar_data: WebinarUpdateSchema,current_user:TokenData=Depends(access_token_bearer)) -> WebinarSchema:
         """Update webinar information"""
         webinars = await self.db.exec(select(Webinar).where(Webinar.id == webinar_id))
         webinar = webinars.first()
@@ -117,11 +129,19 @@ class WebinarService:
         
         self.db.add(webinar)
         await self.db.commit()
-        await self.db.refresh(webinar)
+        await self.db.refresh(webinar) 
+
+        await  audit_service.log_update(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= webinar.__tablename__,
+        entity_id= webinar.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return WebinarSchema.model_validate(webinar)
     
-    async def delete_webinar(self, webinar_id: str) -> Dict[str, str]:
+    async def delete_webinar(self, request:Request,webinar_id: str,current_user:TokenData=Depends(access_token_bearer)) -> Dict[str, str]:
         """Delete a webinar"""
         webinars = await self.db.exec(select(Webinar).where(Webinar.id == webinar_id))
         webinar = webinars.first()
@@ -133,7 +153,15 @@ class WebinarService:
             )
         
         self.db.delete(webinar)
-        await self.db.commit()
+        await self.db.commit() 
+
+        await  audit_service.log_delete(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= webinar.__tablename__,
+        entity_id= None,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return {"message": "Webinar deleted successfully"}
     

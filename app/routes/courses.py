@@ -1,7 +1,7 @@
 """
 Course management API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query,Request
 from sqlmodel import Session
 from typing import Optional
 
@@ -52,7 +52,8 @@ async def get_courses(
 
 
 @router.post("/", response_model=CourseDetailSchema, status_code=status.HTTP_201_CREATED)
-async def create_course(
+async def create_course( 
+    request:Request,
     course_data: CourseCreateSchema,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
@@ -60,7 +61,7 @@ async def create_course(
     """Create a new course"""
     course_service = CourseService(db)
     id = current_user.get("sub")
-    return await course_service.create_course(course_data, id)
+    return await course_service.create_course(course_data, id,current_user,request)
 
 
 @router.get("/stats", response_model=CourseStatsSchema)
@@ -100,7 +101,8 @@ async def get_course_by_id(
 
 
 @router.put("/{course_id}", response_model=CourseDetailSchema)
-async def update_course(
+async def update_course( 
+    request:Request,
     course_id: str,
     course_data: CourseUpdateSchema,
     current_user: TokenData = Depends(access_token_bearer),
@@ -108,7 +110,7 @@ async def update_course(
 ):
     """Update course information"""
     course_service = CourseService(db)
-    return await course_service.update_course(course_id, course_data)
+    return await course_service.update_course(course_id, course_data,current_user,request)
 
 
 @router.post("/{course_id}/publish", response_model=CourseDetailSchema)
@@ -123,14 +125,15 @@ async def publish_course(
 
 
 @router.delete("/{course_id}", response_model=MessageResponse)
-async def delete_course(
+async def delete_course( 
+    request:Request,
     course_id: str,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Delete a course"""
     course_service = CourseService(db)
-    result = course_service.delete_course(course_id)
+    result = course_service.delete_course(course_id,current_user,request)
     return MessageResponse(message=result["message"])
 
 

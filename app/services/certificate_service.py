@@ -3,7 +3,7 @@ Certificate service for managing certificates and gamification
 """
 from typing import Optional, List, Dict, Any
 from sqlmodel import Session, select, func
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status,Request,Depends
 from datetime import datetime
 import uuid
 
@@ -13,7 +13,10 @@ from app.models.models.course import Course
 from app.schemas.certificate import (
     CertificateCreateSchema, CertificateUpdateSchema, CertificateSchema
 )
-from app.schemas.base import PaginatedResponse
+from app.utils.audit import audit_service
+from app.schemas.base import PaginatedResponse 
+from app.core.security import access_token_bearer 
+from app.schemas.auth import TokenData
 
 
 class CertificateService:
@@ -69,7 +72,7 @@ class CertificateService:
         
         return PaginatedResponse.create(certificate_schemas, total, page, limit)
     
-    async def create_certificate(self, certificate_data: CertificateCreateSchema) -> CertificateSchema:
+    async def create_certificate(self,request:Request, certificate_data: CertificateCreateSchema) -> CertificateSchema:
         """Create a new certificate"""
         users = await self.db.exec(select(User).where(User.id == certificate_data.user_id))
         user = users.first()
@@ -102,7 +105,15 @@ class CertificateService:
         
         self.db.add(new_certificate)
         await self.db.commit()
-        await self.db.refresh(new_certificate)
+        await self.db.refresh(new_certificate) 
+
+        await  audit_service.log_create(
+        db= self.db,
+        user_id= user.id, 
+        entity_type= new_certificate.__tablename__,
+        entity_id=new_certificate.id,
+        ip_address=request.client.host if request.client else None,
+        details={"firstname": user.first_name})
         
         return CertificateSchema(
             id=new_certificate.id,
@@ -114,7 +125,7 @@ class CertificateService:
             certificate_url=new_certificate.certificate_url,
             verification_code=new_certificate.verification_code,
             is_valid=new_certificate.is_valid,
-            user_name=user.full_name,
+            user_name=user.first_name,
             course_title=course.title if course else "N/A",
             created_at=new_certificate.created_at,
             updated_at=new_certificate.updated_at
@@ -152,10 +163,12 @@ class CertificateService:
             updated_at=certificate.updated_at
         )
     
-    async def update_certificate(self, certificate_id: str, certificate_data: CertificateUpdateSchema) -> CertificateSchema:
+    async def update_certificate(self, certificate_id: str, certificate_data: CertificateUpdateSchema, request:Request,current_user :TokenData = Depends(access_token_bearer)) -> CertificateSchema:
         """Update certificate information"""
         certificates = await self.db.exec(select(Certificate).where(Certificate.id == certificate_id))
-        certificate = certificates.first()
+        certificate = certificates.first()  
+
+
         
         if not certificate:
             raise HTTPException(
@@ -176,11 +189,21 @@ class CertificateService:
         
         self.db.add(certificate)
         await self.db.commit()
-        await self.db.refresh(certificate)
+        await self.db.refresh(certificate)  
+
+        await  audit_service.log_create(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= certificate.__tablename__,
+        entity_id=certificate.id,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
+        
+       
         
         return await self.get_certificate_by_id(certificate.id)
     
-    async def delete_certificate(self, certificate_id: str) -> Dict[str, str]:
+    async def delete_certificate(self, certificate_id: str,request:Request,current_user:TokenData=Depends(access_token_bearer)) -> Dict[str, str]:
         """Delete a certificate"""
         certificates = await self.db.exec(select(Certificate).where(Certificate.id == certificate_id))
         certificate = certificates.first()
@@ -192,7 +215,15 @@ class CertificateService:
             )
         
         self.db.delete(certificate)
-        await self.db.commit()
+        await self.db.commit() 
+
+        await  audit_service.log_delete(
+        db= self.db,
+        user_id= current_user.get("sub"), 
+        entity_type= certificate.__tablename__,
+        entity_id=None,
+        ip_address=request.client.host if request.client else None,
+        details={"email": current_user.get("email")})
         
         return {"message": "Certificate deleted successfully"}
 

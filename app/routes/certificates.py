@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query,Request
 from sqlmodel import Session
 from typing import Optional, List
 
@@ -31,14 +31,15 @@ async def get_certificates(
 
 
 @router.post("/", response_model=CertificateSchema, status_code=status.HTTP_201_CREATED)
-async def create_certificate(
+async def create_certificate( 
+    request : Request,
     certificate_data: CertificateCreateSchema,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Create a new certificate"""
     certificate_service = CertificateService(db)
-    return await certificate_service.create_certificate(certificate_data)
+    return await certificate_service.create_certificate(certificate_data,request)
 
 
 @router.get("/{certificate_id}", response_model=CertificateSchema)
@@ -53,7 +54,8 @@ async def get_certificate_by_id(
 
 
 @router.put("/{certificate_id}", response_model=CertificateSchema)
-async def update_certificate(
+async def update_certificate( 
+    request : Request,
     certificate_id: str,
     certificate_data: CertificateUpdateSchema,
     current_user: TokenData = Depends(access_token_bearer),
@@ -61,18 +63,19 @@ async def update_certificate(
 ):
     """Update certificate information"""
     certificate_service = CertificateService(db)
-    return await certificate_service.update_certificate(certificate_id, certificate_data)
+    return await certificate_service.update_certificate(certificate_id, certificate_data,request,current_user)
 
 
 @router.delete("/{certificate_id}", response_model=MessageResponse)
-async def delete_certificate(
+async def delete_certificate( 
+    request : Request,
     certificate_id: str,
     current_user: TokenData = Depends(access_token_bearer),
     db: Session = Depends(get_session)
 ):
     """Delete a certificate"""
     certificate_service = CertificateService(db)
-    result = await certificate_service.delete_certificate(certificate_id)
+    result = await certificate_service.delete_certificate(certificate_id,request,current_user)
     return MessageResponse(message=result["message"])
 
 
