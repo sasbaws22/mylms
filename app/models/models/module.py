@@ -121,7 +121,6 @@ class Video(SQLModel, table=True):
     )    
     # Foreign key
     module_id:Optional[uuid.UUID] = Field( nullable=True, foreign_key="module.id",default=None) 
-    content_progress_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="content_progress.id", default=None)
     
     # Video details
     title: str = Field(nullable=False, max_length=200)
@@ -138,7 +137,7 @@ class Video(SQLModel, table=True):
     
     # Relationships
     module: Module = Relationship(back_populates="videos")
-    content_progress: List["ContentProgress"] = Relationship(back_populates="video", sa_relationship_kwargs={"foreign_keys": "[ContentProgress.video_id]"})
+    content_progress: List["ContentProgress"] = Relationship(back_populates="video")
     
     @property
     def duration_formatted(self) -> str:

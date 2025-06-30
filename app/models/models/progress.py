@@ -23,6 +23,31 @@ class ProgressStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
 
+class ContentProgress(SQLModel, table=True):
+    """Content progress tracking model"""
+    __tablename__ = "content_progress"
+
+    id: uuid.UUID = Field(
+        sa_column=Column(pg.UUID, nullable=False, primary_key=True, default=uuid.uuid4)
+    )
+
+    # Foreign keys
+    module_progress_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="module_progress.id", default=None) 
+    video_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="video.id", default=None)
+    content_type: str = Field(nullable=False) # Type of content (video, document, quiz)
+
+    # Progress details
+    status: ProgressStatus = Field(default=ProgressStatus.NOT_STARTED)
+    progress_percentage: float = Field(default=0.0)
+    time_spent: int = Field(default=0)  # in seconds
+    last_accessed: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"onupdate": datetime.now})
+
+    # Relationships
+    module_progress: 'ModuleProgress' = Relationship(back_populates="content_progress") 
+    video : Optional["Video"] = Relationship(back_populates="content_progress", sa_relationship_kwargs={"foreign_keys": "[ContentProgress.video_id]"})
+
 
 class ModuleProgress(SQLModel, table=True):
     """Module progress tracking model""" 
@@ -82,30 +107,5 @@ from app.models.models.user import User
 
 
 
-
-class ContentProgress(SQLModel, table=True):
-    """Content progress tracking model"""
-    __tablename__ = "content_progress"
-
-    id: uuid.UUID = Field(
-        sa_column=Column(pg.UUID, nullable=False, primary_key=True, default=uuid.uuid4)
-    )
-
-    # Foreign keys
-    module_progress_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="module_progress.id", default=None) 
-    video_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="video.id", default=None)
-    content_type: str = Field(nullable=False) # Type of content (video, document, quiz)
-
-    # Progress details
-    status: ProgressStatus = Field(default=ProgressStatus.NOT_STARTED)
-    progress_percentage: float = Field(default=0.0)
-    time_spent: int = Field(default=0)  # in seconds
-    last_accessed: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"onupdate": datetime.now})
-
-    # Relationships
-    module_progress: ModuleProgress = Relationship(back_populates="content_progress") 
-    video : Optional["Video"] = Relationship(back_populates="content_progress", sa_relationship_kwargs={"foreign_keys": "[ContentProgress.video_id]"})
 
 
