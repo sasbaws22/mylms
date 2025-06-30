@@ -77,7 +77,7 @@ class ProgressStatus(str, enum.Enum):
 
 
 from app.models.models.course import Enrollment
-from app.models.models.module import Module, Video
+from app.models.models.module import Module
 from app.models.models.user import User
 
 
@@ -93,7 +93,7 @@ class ContentProgress(SQLModel, table=True):
 
     # Foreign keys
     # module_progress_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="module_progress.id", default=None) 
-    video_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="video.id", default=None)
+    # video_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="video.id", default=None)
     content_type: str = Field(nullable=False) # Type of content (video, document, quiz)
 
     # Progress details
@@ -106,6 +106,6 @@ class ContentProgress(SQLModel, table=True):
 
     # Relationships
     # module_progress: ModuleProgress = Relationship(back_populates="content_progress") 
-    video : Optional["Video"] = Relationship(back_populates="content_progress", sa_relationship_kwargs={"foreign_keys": "[ContentProgress.video_id]"})
+    # video : Optional["Video"] = Relationship(back_populates="content_progress", sa_relationship_kwargs={"foreign_keys": "[ContentProgress.video_id]"})
 
 

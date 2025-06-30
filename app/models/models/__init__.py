@@ -5,7 +5,7 @@ Database models package
 # Import all models to ensure they are registered with SQLModel
 from app.models.models.user import User
 from app.models.models.course import Course, Category, Enrollment, CourseStatus, DifficultyLevel, EnrollmentStatus
-from app.models.models.module import Module, Document, Video, ContentType, VideoType
+from app.models.models.module import Module, Document,ContentType, VideoType
 from app.models.models.quiz import Quiz, Question, QuestionOption, QuizAttempt, QuizResponse, QuestionType
 from app.models.models.progress import ProgressStatus
 from app.models.models.webinar import Webinar, WebinarRegistration, ChatMessage, WebinarStatus, MessageType

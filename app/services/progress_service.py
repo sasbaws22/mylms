@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.models.models.progress import  ProgressStatus,ContentProgress
 from app.models.models.course import Course, Enrollment, EnrollmentStatus
-from app.models.models.module import Module, Video, Document, ContentType 
+from app.models.models.module import Module, Document, ContentType 
 from app.models.models.quiz import Quiz, QuizAttempt
 from app.models.models.user import User
 from app.schemas.progress import (

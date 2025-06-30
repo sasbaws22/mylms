@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 import uuid
 
-from app.models.models.module import Module, Document, Video, ContentType, VideoType
+from app.models.models.module import Module, Document, ContentType, VideoType
 from app.models.models.course import Course
 from app.schemas.module import (
     ModuleCreateSchema, ModuleUpdateSchema, ModuleResponseSchema, ModuleDetailSchema,
@@ -318,87 +318,87 @@ class ModuleService:
                 detail="Module not found"
             )
         
-        new_video = Video(
-            module_id=module_id,
-            title=video_data.title,
-            video_url=video_data.video_url,
-            duration=video_data.duration,
-            thumbnail_url=video_data.thumbnail_url,
-            video_type=video_data.video_type,
-            quality_options=video_data.quality_options,
-            subtitles_url=video_data.subtitles_url
-        )
+        # new_video = Video(
+        #     module_id=module_id,
+        #     title=video_data.title,
+        #     video_url=video_data.video_url,
+        #     duration=video_data.duration,
+        #     thumbnail_url=video_data.thumbnail_url,
+        #     video_type=video_data.video_type,
+        #     quality_options=video_data.quality_options,
+        #     subtitles_url=video_data.subtitles_url
+        # )
         
-        self.db.add(new_video)
-        await self.db.commit()
-        await self.db.refresh(new_video)
+        # self.db.add(new_video)
+        # await self.db.commit()
+        # await self.db.refresh(new_video)
         
-        return new_video
+        # return new_video
     
-    async def update_video(self, video_id: str, video_data: VideoUpdateSchema) -> VideoSchema:
-        """Update video information"""
-        videos = await self.db.exec(select(Video).where(Video.id == video_id))
-        video = videos.first()
+    # async def update_video(self, video_id: str, video_data: VideoUpdateSchema) -> VideoSchema:
+    #     """Update video information"""
+    #     videos = await self.db.exec(select(Video).where(Video.id == video_id))
+    #     video = videos.first()
         
-        if not video:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Video not found"
-            )
+    #     if not video:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_404_NOT_FOUND,
+    #             detail="Video not found"
+    #         )
         
-        # Update fields
-        if video_data.title is not None:
-            video.title = video_data.title
-        if video_data.video_url is not None:
-            video.video_url = video_data.video_url
-        if video_data.duration is not None:
-            video.duration = video_data.duration
-        if video_data.thumbnail_url is not None:
-            video.thumbnail_url = video_data.thumbnail_url
-        if video_data.video_type is not None:
-            video.video_type = video_data.video_type
-        if video_data.quality_options is not None:
-            video.quality_options = video_data.quality_options
-        if video_data.subtitles_url is not None:
-            video.subtitles_url = video_data.subtitles_url
+    #     # Update fields
+    #     if video_data.title is not None:
+    #         video.title = video_data.title
+    #     if video_data.video_url is not None:
+    #         video.video_url = video_data.video_url
+    #     if video_data.duration is not None:
+    #         video.duration = video_data.duration
+    #     if video_data.thumbnail_url is not None:
+    #         video.thumbnail_url = video_data.thumbnail_url
+    #     if video_data.video_type is not None:
+    #         video.video_type = video_data.video_type
+    #     if video_data.quality_options is not None:
+    #         video.quality_options = video_data.quality_options
+    #     if video_data.subtitles_url is not None:
+    #         video.subtitles_url = video_data.subtitles_url
         
-        self.db.add(video)
-        await self.db.commit()
-        await self.db.refresh(video)
+    #     self.db.add(video)
+    #     await self.db.commit()
+    #     await self.db.refresh(video)
         
-        return video
+    #     return video
     
-    async def get_module_videos(self, module_id: str) -> List[VideoSchema]:
-        """Get all videos for a module"""
-        modules = await self.db.exec(select(Module).where(Module.id == module_id))
-        module = modules.first()
+    # async def get_module_videos(self, module_id: str) -> List[VideoSchema]:
+    #     """Get all videos for a module"""
+    #     modules = await self.db.exec(select(Module).where(Module.id == module_id))
+    #     module = modules.first()
         
-        if not module:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Module not found"
-            )
+    #     if not module:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_404_NOT_FOUND,
+    #             detail="Module not found"
+    #         )
         
-        video = await self.db.exec(select(Video).where(Video.module_id == module_id))
-        videos = video.all()
+    #     video = await self.db.exec(select(Video).where(Video.module_id == module_id))
+    #     videos = video.all()
         
-        return videos
+    #     return videos
     
-    async def delete_video(self, video_id: str) -> Dict[str, str]:
-        """Delete a video"""
-        videos = await self.db.exec(select(Video).where(Video.id == video_id))
-        video = videos.first()
+    # async def delete_video(self, video_id: str) -> Dict[str, str]:
+    #     """Delete a video"""
+    #     videos = await self.db.exec(select(Video).where(Video.id == video_id))
+    #     video = videos.first()
         
-        if not video:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Video not found"
-            )
+    #     if not video:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_404_NOT_FOUND,
+    #             detail="Video not found"
+    #         )
         
-        self.db.delete(video)
-        await self.db.commit()
+    #     self.db.delete(video)
+    #     await self.db.commit()
         
-        return {"message": "Video deleted successfully"}
+    #     return {"message": "Video deleted successfully"}
     
     # File upload methods
     async def upload_file(self, file: UploadFile, upload_type: str = "document") -> FileUploadResponseSchema:
