@@ -59,9 +59,9 @@ class Module(SQLModel, table=True):
     # Relationships
     course: "Course" = Relationship(back_populates="modules")
     documents: List["Document"] = Relationship(back_populates="module")
-    # videos: List["Video"] = Relationship(back_populates="module")
+    videos: List["Video"] = Relationship(back_populates="module")
     quizzes: List["Quiz"] = Relationship(back_populates="module")
-    # module_progress: List["ModuleProgress"] = Relationship(back_populates="module") 
+    module_progress: List["ModuleProgress"] = Relationship(back_populates="module") 
     learning_analytics: Optional["LearningAnalytics"] = Relationship(
         back_populates="module"
     )
@@ -113,49 +113,49 @@ class Document(SQLModel, table=True):
         return self.file_size / (1024 * 1024)
 
 
-# class Video(SQLModel, table=True):
-#     """Video model""" 
-#     __tablename__ = "video"
-#     id  : uuid.UUID = Field(
-#         sa_column=Column(pg.UUID, nullable=False, primary_key=True, default=uuid.uuid4)
-#     )    
-#     # Foreign key
-#     module_id:Optional[uuid.UUID] = Field( nullable=True, foreign_key="module.id",default=None) 
-#     content_progress_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="content_progress.id", default=None)
+class Video(SQLModel, table=True):
+    """Video model""" 
+    __tablename__ = "video"
+    id  : uuid.UUID = Field(
+        sa_column=Column(pg.UUID, nullable=False, primary_key=True, default=uuid.uuid4)
+    )    
+    # Foreign key
+    module_id:Optional[uuid.UUID] = Field( nullable=True, foreign_key="module.id",default=None) 
+    content_progress_id: Optional[uuid.UUID] = Field(nullable=True, foreign_key="content_progress.id", default=None)
     
-#     # Video details
-#     title: str = Field(nullable=False, max_length=200)
-#     video_url: str = Field(nullable=False, max_length=500)
-#     duration: int = Field(default=0)  # in seconds 
-#     thumbnail_url: Optional[str] = Field(default=None, max_length=500)
+    # Video details
+    title: str = Field(nullable=False, max_length=200)
+    video_url: str = Field(nullable=False, max_length=500)
+    duration: int = Field(default=0)  # in seconds 
+    thumbnail_url: Optional[str] = Field(default=None, max_length=500)
     
-#     # Video properties
-#     video_type: VideoType = Field(default=VideoType.UPLOADED)
-#     quality_options: List[str] = Field(default_factory=list, sa_type=JSON)
-#     subtitles_url: Optional[str] = Field(default=None, max_length=500) 
-#     created_at: datetime = Field(default_factory=datetime.now)
-#     updated_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"onupdate": datetime.now})
+    # Video properties
+    video_type: VideoType = Field(default=VideoType.UPLOADED)
+    quality_options: List[str] = Field(default_factory=list, sa_type=JSON)
+    subtitles_url: Optional[str] = Field(default=None, max_length=500) 
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"onupdate": datetime.now})
     
-#     # Relationships
-#     module: Module = Relationship(back_populates="videos")
-#     content_progress: List["ContentProgress"] = Relationship(back_populates="video", sa_relationship_kwargs={"foreign_keys": "[ContentProgress.video_id]"})
+    # Relationships
+    module: Module = Relationship(back_populates="videos")
+    content_progress: List["ContentProgress"] = Relationship(back_populates="video", sa_relationship_kwargs={"foreign_keys": "[ContentProgress.video_id]"})
     
-#     @property
-#     def duration_formatted(self) -> str:
-#         """Get formatted duration (HH:MM:SS)"""
-#         hours = self.duration // 3600
-#         minutes = (self.duration % 3600) // 60
-#         seconds = self.duration % 60
+    @property
+    def duration_formatted(self) -> str:
+        """Get formatted duration (HH:MM:SS)"""
+        hours = self.duration // 3600
+        minutes = (self.duration % 3600) // 60
+        seconds = self.duration % 60
         
-#         if hours > 0:
-#             return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-#         else:
-#             return f"{minutes:02d}:{seconds:02d}"
+        if hours > 0:
+            return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        else:
+            return f"{minutes:02d}:{seconds:02d}"
 
 
-# # Import other models to avoid circular imports
+# Import other models to avoid circular imports
 from app.models.models.course import Course
 from app.models.models.quiz import Quiz
-from app.models.models.progress import  ContentProgress 
+from app.models.models.progress import ModuleProgress, ContentProgress 
 from app.models.models.analytics import LearningAnalytics
 
