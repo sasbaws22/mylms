@@ -64,7 +64,7 @@ class AuthService:
         
         return new_user
     
-    async def login_user(self,request: Request, login_data: LoginSchema) -> TokenResponseSchema:
+    async def login_user(self,login_data: LoginSchema,request:Request) -> TokenResponseSchema:
         """Authenticate user and return tokens"""
         # Find user by email
        # Get user by email

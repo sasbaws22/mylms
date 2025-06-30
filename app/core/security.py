@@ -11,7 +11,6 @@ from app.db.database import get_session
 from app.models.models import User
 from fastapi.security import HTTPBearer,HTTPAuthorizationCredentials
 from fastapi import Request
-from app.models.models import user as user_crud
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

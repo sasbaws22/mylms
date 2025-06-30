@@ -2,7 +2,7 @@
 LMS Backend Application Package
 """
 
-from app.routes import (analytics,auth, certificates, courses,modules, notifications, quizzes, users, webinars,progress)
+from app.routes import (analytics,auth, certificates, courses,modules, notifications, quizzes, users, webinars,progress,audit)
 from fastapi import FastAPI, APIRouter
 
 
@@ -41,6 +41,7 @@ api_router.include_router(notifications.notifications_router, prefix=f"{version_
 api_router.include_router(analytics.router, prefix=f"{version_prefix}/analytics", tags=["Analytics"])
 api_router.include_router(progress.progress_router, prefix=f"{version_prefix}/progress", tags=["Progress Tracking"])
 api_router.include_router(certificates.certificates_router, prefix=f"{version_prefix}/certificates", tags=["Certificates"]) 
+api_router.include_router(audit.router, prefix=f"{version_prefix}/audit", tags=["Audit"])
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

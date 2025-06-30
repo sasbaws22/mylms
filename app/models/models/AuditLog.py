@@ -32,7 +32,7 @@ class AuditLog(SQLModel,table=True):
     created_at:datetime= Field(default_factory=datetime.now)
 
     # Relationships
-    user:User = Relationship(back_populates="audit_logs",sa_relationship_kwargs={"lazy": "selectin"})  
+    users: "User" = Relationship(back_populates="audit_logs",sa_relationship_kwargs={"lazy": "selectin"})  
 
 
 

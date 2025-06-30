@@ -65,7 +65,7 @@ class User(SQLModel, table=True):
     notification_preference: "NotificationPreferences" = Relationship(back_populates="users") 
     user_sessions: "UserSession" = Relationship(back_populates="users") 
     learning_analytics: "LearningAnalytics" = Relationship(back_populates="users") 
-    audit_log: Optional["AuditLog"] = Relationship(back_populates="users")
+    audit_logs: Optional["AuditLog"] = Relationship(back_populates="users")
     content_versions: List["ContentVersion"] = Relationship(back_populates="users")
     class Config:
         """Pydantic configuration"""
@@ -91,5 +91,6 @@ from app.models.models.webinar import Webinar,WebinarRegistration,ChatMessage
 from app.models.models.notification import Notification 
 from app.models.models.notification import NotificationPreferences 
 from app.models.models.analytics import UserSession 
-from app.models.models.analytics import LearningAnalytics,AuditLog
+from app.models.models.analytics import LearningAnalytics 
+from app.models.models.AuditLog import AuditLog
 

@@ -106,33 +106,6 @@ class SystemSettings(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"onupdate": datetime.now})
 
 
-class AuditLog(SQLModel, table=True): 
-    __tablename__ = "audit_log"
-    """Audit log model for tracking system changes"""
-    id  : uuid.UUID = Field(
-        sa_column=Column(pg.UUID, nullable=False, primary_key=True, default=uuid.uuid4)
-    )   
-    # User and action
-    user_id:Optional[uuid.UUID] =  Field( nullable=True, foreign_key="users.id",default=None)
-    action: str = Field(nullable=False, max_length=100)
-    
-    # Resource details
-    resource_type: str = Field(nullable=False, max_length=50)
-    resource_id: Optional[str] = Field(default=None, max_length=50)
-    
-    # Change tracking
-    old_values: Optional[dict] = Field(default=None, sa_type=JSON)
-    new_values: Optional[dict] = Field(default=None, sa_type=JSON)
-    
-    # Request details
-    ip_address: Optional[str] = Field(default=None, max_length=45)
-    user_agent: Optional[str] = Field(default=None, max_length=500)
-    timestamp: datetime = Field(default_factory=datetime.utcnow) 
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"onupdate": datetime.now})
-    
-    # Relationships
-    users: Optional["User"] = Relationship(back_populates="audit_log")
 
 
 # Import other models to avoid circular imports

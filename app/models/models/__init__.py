@@ -12,7 +12,8 @@ from app.models.models.webinar import Webinar, WebinarRegistration, ChatMessage,
 from app.models.models.notification import Notification, NotificationPreferences, NotificationType, NotificationPriority
 from app.models.models.certificate import Certificate, Badge, UserBadge, UserPoints, CertificateType, BadgeType, PointsSource
 from app.models.models.review import ContentReview, ContentVersion, ReviewStatus, ContentTypeEnum
-from app.models.models.analytics import UserSession, LearningAnalytics, SystemSettings, AuditLog, ActionType
+from app.models.models.analytics import UserSession, LearningAnalytics, SystemSettings,ActionType 
+from app.models.models.AuditLog import AuditLog
 
 # Export all models
 __all__ = [

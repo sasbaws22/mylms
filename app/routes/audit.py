@@ -9,10 +9,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import desc 
 from app.db.database import get_session 
 
-from app.models.models import User, AuditLog, AuditAction 
+from app.models.models import User
+from app.models.models.AuditLog import AuditAction,AuditLog
 from sqlmodel import select
 
-from app.core import deps
 from app.models.models import User
 
 
@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional, Any
 from uuid import UUID 
-from app.core.deps import AccessTokenBearer
+from app.core.security import AccessTokenBearer
 from datetime import datetime  
 
 access_token_bearer = AccessTokenBearer(auto_error=True)
