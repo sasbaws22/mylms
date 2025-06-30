@@ -61,7 +61,7 @@ class Module(SQLModel, table=True):
     documents: List["Document"] = Relationship(back_populates="module")
     videos: List["Video"] = Relationship(back_populates="module")
     quizzes: List["Quiz"] = Relationship(back_populates="module")
-    module_progress: List["ModuleProgress"] = Relationship(back_populates="module") 
+    # module_progress: List["ModuleProgress"] = Relationship(back_populates="module") 
     learning_analytics: Optional["LearningAnalytics"] = Relationship(
         back_populates="module"
     )
@@ -156,6 +156,6 @@ class Video(SQLModel, table=True):
 # Import other models to avoid circular imports
 from app.models.models.course import Course
 from app.models.models.quiz import Quiz
-from app.models.models.progress import ModuleProgress, ContentProgress 
+from app.models.models.progress import  ContentProgress 
 from app.models.models.analytics import LearningAnalytics
 
