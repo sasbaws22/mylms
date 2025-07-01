@@ -32,7 +32,7 @@ dnspython==2.7.0
 ecdsa==0.19.1
 email_validator==2.2.0
 emails==0.6
-fastapi==0.104.1
+fastapi==0.104.1 
 flake8==6.1.0
 frozenlist==1.7.0
 greenlet==3.2.3
