@@ -145,7 +145,7 @@ class Enrollment(SQLModel, table=True):
     users: "User" = Relationship(back_populates="enrollment",sa_relationship_kwargs={"foreign_keys": "[Enrollment.user_id]"})
     course: Course = Relationship(back_populates="enrollment")
     assigned_by_user: Optional["User"] = Relationship(back_populates="enrollment",sa_relationship_kwargs={"foreign_keys": "[Enrollment.assigned_by]"})
-    # module_progress: List["ModuleProgress"] = Relationship(back_populates="enrollment")
+    module_progress: List["ModuleProgress"] = Relationship(back_populates="enrollment")
     
     @property
     def is_overdue(self) -> bool:
@@ -156,7 +156,7 @@ class Enrollment(SQLModel, table=True):
 # Import other models to avoid circular imports
 from app.models.models.user import User
 from app.models.models.module import Module
-# from app.models.models.progress import ModuleProgress
+from app.models.models.progress import ModuleProgress
 from app.models.models.certificate import Certificate
 from app.models.models.review import ContentReview
 from app.models.models.analytics import LearningAnalytics

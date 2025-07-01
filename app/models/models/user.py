@@ -47,7 +47,7 @@ class User(SQLModel, table=True):
 
 
     courses:List ["Course"] = Relationship(back_populates="users") 
-    # module_progress:List ["ModuleProgress"] = Relationship(back_populates="users") 
+    module_progress:List ["ModuleProgress"] = Relationship(back_populates="users") 
     certificates:List ["Certificate"] = Relationship(back_populates="users") 
     user_badges:List ["UserBadge"] = Relationship(back_populates="users") 
     user_points:List ["UserPoints"] = Relationship(back_populates="users")
@@ -85,7 +85,7 @@ from app.models.models.user import User
 from app.models.models.course import Enrollment,Course
 from app.models.models.quiz import QuizAttempt 
 from app.models.models.review import ContentReview, ContentVersion
-# from app.models.models.progress import ModuleProgress
+from app.models.models.progress import ModuleProgress
 from app.models.models.certificate import Certificate,UserBadge,UserPoints 
 from app.models.models.webinar import Webinar,WebinarRegistration,ChatMessage 
 from app.models.models.notification import Notification 
